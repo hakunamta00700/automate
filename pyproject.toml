@@ -1,0 +1,44 @@
+[project]
+name = "automate"
+version = "0.1.6"
+description = "Add your description here"
+authors = [
+    { name = "David Cho", email = "csi00700@gmail.com" }
+]
+dependencies = [
+    "rye-easy>=0.1.29",
+    "fastapi[standard]>=0.115.12",
+    "youtube-transcript-api>=1.0.3",
+    "click>=8.1.8",
+    "gunicorn>=23.0.0",
+    "uvicorn>=0.34.2",
+]
+readme = "README.md"
+requires-python = ">= 3.12"
+
+[project.scripts]
+automate-dev = "automate.main:run"
+automate-prod = "automate.cli:serve"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/automate"]
+
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/**",
+    "pyproject.toml",
+    "README.md"
+]
+exclude = ["*.pyc", "dist", "build/**"]
