@@ -2,6 +2,7 @@ import os
 import click
 from dotenv import load_dotenv
 from .youtube_lib import process_video
+from .cli import run as run_server
 
 # 환경 변수 로드
 load_dotenv()
@@ -52,6 +53,30 @@ def transcribe(video_id):
     except Exception as e:
         click.echo(f"\n❌ 오류가 발생했습니다: {str(e)}", err=True)
         raise click.Abort()
+    
+@cli.command()
+@click.argument(
+    'env',
+    type=click.Choice(['dev', 'prod']),
+    default='dev',
+)
+def serve(env):
+    """서버를 실행합니다.
+    
+    실행 환경에 따라 다른 설정이 적용됩니다:
+
+    - dev: 개발 환경 (기본값)
+
+        - 디버그 모드 활성화
+
+        - 자세한 로깅
+
+    - prod: 운영 환경
+
+        - 최적화된 성능
+
+    """
+    run_server(env)
 
 if __name__ == '__main__':
     cli()

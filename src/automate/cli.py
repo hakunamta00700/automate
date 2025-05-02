@@ -26,6 +26,3 @@ def run(env: str):
     print(f"mode: {env}")
     asyncio.run(serve(app, config))
 
-def main():
-    env = sys.argv[2] if len(sys.argv) > 1 else "dev"
-    run(env)
