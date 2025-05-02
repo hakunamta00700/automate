@@ -1,0 +1,66 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Version tags trigger this workflow
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      
+      - name: Get Commit Message
+        id: commit_message
+        run: |
+          echo "message=$(git log -1 --pretty=%B ${{ github.ref_name }} | base64 -w 0)" >> $GITHUB_OUTPUT
+      
+      - name: Decode Commit Message
+        id: decode_message
+        run: |
+          echo "decoded_message=$(echo ${{ steps.commit_message.outputs.message }} | base64 -d)" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: ${{ steps.decode_message.outputs.decoded_message }}
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Install Rye
+        run: |
+          wget https://github.com/astral-sh/rye/releases/latest/download/rye-x86_64-linux.gz
+          gunzip rye-x86_64-linux.gz
+          chmod +x ./rye-x86_64-linux
+          ./rye-x86_64-linux self install --yes
+          echo "$HOME/.rye/shims" >> $GITHUB_PATH
+      
+      - name: Install Dependencies
+        run: |
+          rye sync
+      
+      - name: Build and Publish
+        env:
+          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+        run: |
+          # 프로젝트 구조 확인
+          ls -R
+          # 빌드
+          rye build
+          # 빌드된 파일 확인
+          ls -la dist/
+          # 배포
+          pip install twine --upgrade
+          rye publish --token ${{ secrets.PYPI_TOKEN }} --yes
