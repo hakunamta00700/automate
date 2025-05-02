@@ -6,17 +6,19 @@ authors = [
     { name = "David Cho", email = "csi00700@gmail.com" }
 ]
 dependencies = [
-    "rye-easy>=0.1.29",
     "youtube-transcript-api>=1.0.3",
     "click>=8.1.8",
     "hypercorn>=0.17.3",
     "fastapi>=0.115.12",
+    "python-dotenv>=1.1.0",
+    "pyairtable>=3.1.1",
+    "openai>=1.76.2",
 ]
 readme = "README.md"
-requires-python = ">= 3.12"
+requires-python = ">=3.12"
 
 [project.scripts]
-automate = "automate.cli:main"
+automate = "automate:cli"
 
 [build-system]
 requires = ["hatchling"]
@@ -47,3 +49,8 @@ include = [
     "README.md"
 ]
 exclude = ["*.pyc", "dist", "build/**"]
+
+[dependency-groups]
+dev = [
+    "rye-easy>=0.1.29",
+]
