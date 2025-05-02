@@ -2,7 +2,6 @@ from typing import Union
 
 from fastapi import FastAPI
 from .youtube_lib import get_transcript, summarize
-import uvicorn
 
 app = FastAPI()
 
@@ -23,5 +22,3 @@ def read_item(item_id: int, q: Union[str, None] = None):
     return {"item_id": item_id, "q": q}
 
 
-def run():
-    uvicorn.run("automate.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -21,8 +21,9 @@ def get_config(env: str) -> Config:
 
 def run(env: str):
     config = get_config(env)
+    print(f"mode: {env}")
     asyncio.run(serve(app, config))
 
 def main():
-    env = sys.argv[1] if len(sys.argv) > 1 else "dev"
+    env = sys.argv[2] if len(sys.argv) > 1 else "dev"
     run(env)
