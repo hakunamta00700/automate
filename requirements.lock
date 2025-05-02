@@ -40,17 +40,25 @@ fastapi==0.115.12
     # via automate
 fastapi-cli==0.0.7
     # via fastapi
-gunicorn==23.0.0
-    # via automate
 h11==0.16.0
     # via httpcore
+    # via hypercorn
     # via uvicorn
+    # via wsproto
+h2==4.2.0
+    # via hypercorn
+hpack==4.1.0
+    # via h2
 httpcore==1.0.9
     # via httpx
 httptools==0.6.4
     # via uvicorn
 httpx==0.28.1
     # via fastapi
+hypercorn==0.17.3
+    # via automate
+hyperframe==6.1.0
+    # via h2
 idna==3.10
     # via anyio
     # via email-validator
@@ -64,10 +72,10 @@ markupsafe==3.0.2
     # via jinja2
 mdurl==0.1.2
     # via markdown-it-py
-packaging==25.0
-    # via gunicorn
 pip==25.1
     # via rye-easy
+priority==2.0.0
+    # via hypercorn
 pydantic==2.11.4
     # via fastapi
 pydantic-core==2.33.2
@@ -114,12 +122,13 @@ typing-inspection==0.4.0
 urllib3==2.4.0
     # via requests
 uvicorn==0.34.2
-    # via automate
     # via fastapi
     # via fastapi-cli
 watchfiles==1.0.5
     # via uvicorn
 websockets==15.0.1
     # via uvicorn
+wsproto==1.2.0
+    # via hypercorn
 youtube-transcript-api==1.0.3
     # via automate

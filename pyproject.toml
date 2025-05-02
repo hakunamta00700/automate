@@ -1,6 +1,6 @@
 [project]
 name = "automate"
-version = "0.1.6"
+version = "0.1.7"
 description = "Add your description here"
 authors = [
     { name = "David Cho", email = "csi00700@gmail.com" }
@@ -10,15 +10,13 @@ dependencies = [
     "fastapi[standard]>=0.115.12",
     "youtube-transcript-api>=1.0.3",
     "click>=8.1.8",
-    "gunicorn>=23.0.0",
-    "uvicorn>=0.34.2",
+    "hypercorn>=0.17.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.12"
 
 [project.scripts]
-automate-dev = "automate.main:run"
-automate-prod = "automate.cli:serve"
+automate = "automate.cli:main"
 
 [build-system]
 requires = ["hatchling"]
