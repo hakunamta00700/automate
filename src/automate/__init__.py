@@ -1,7 +1,7 @@
 import os
 import click
 from dotenv import load_dotenv
-from .youtube_lib import process_video
+from .youtube_lib import process_video, extract_video_id
 from .cli import run as run_server
 
 # 환경 변수 로드
@@ -75,7 +75,21 @@ def transcribe(video_id, language):
         click.echo("\n📍 오류 발생 위치:", err=True)
         click.echo(traceback.format_exc(), err=True)
         raise click.Abort()
+    
+@cli.command()
+@click.argument("url", type=str)
+@click.pass_context
+def transcribe_from_url(ctx, url: str):
+    video_id = extract_video_id(url)
+    click.echo(f"🎬 비디오 ID: {video_id}")
+    ctx.invoke(transcribe, video_id=video_id, language="ko")
 
+@cli.command()
+@click.argument("url", type=str)
+def get_video_id_from_url(url: str):
+    video_id = extract_video_id(url)
+    click.echo(f"🎬 비디오 ID: {video_id}")
+    
 
 @cli.command()
 @click.argument(
