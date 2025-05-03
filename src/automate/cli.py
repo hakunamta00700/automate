@@ -4,9 +4,9 @@ from hypercorn.config import Config
 from hypercorn.asyncio import serve
 from automate.main import app
 
+
 def get_config(env: str) -> Config:
     config = Config()
-    
 
     if env == "dev":
         config.bind = ["127.0.0.1:8000"]
@@ -21,8 +21,8 @@ def get_config(env: str) -> Config:
 
     return config
 
+
 def run(env: str):
     config = get_config(env)
     print(f"mode: {env}")
     asyncio.run(serve(app, config))
-
