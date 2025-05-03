@@ -1,6 +1,6 @@
 [project]
 name = "automate"
-version = "0.1.31"
+version = "0.1.35"
 description = "private automate server"
 authors = [
     { name = "David Cho", email = "csi00700@gmail.com" }
