@@ -114,14 +114,24 @@ def get_table_from_base(base: Base, table_name: str) -> Table:
 def save_to_airtable(video_id: str, record: dict) -> None:
     """요약된 내용을 Airtable에 저장합니다."""
     api_key = os.getenv("AIRTABLE_API_KEY")
+    if api_key is None:
+        raise ValueError("AIRTABLE_API_KEY is not set")
     base_id = os.getenv("AIRTABLE_BASE_ID")
+    if base_id is None:
+        raise ValueError("AIRTABLE_BASE_ID is not set")
+    base_name = os.getenv("AIRTABLE_BASE_NAME")
+    if base_name is None:
+        raise ValueError("AIRTABLE_BASE_NAME is not set")
     table_name = os.getenv("AIRTABLE_TABLE_NAME")
+    if table_name is None:
+        raise ValueError("AIRTABLE_TABLE_NAME is not set")
     print("api_key", api_key)
     print("base_id", base_id)
+    print("base_name", base_name)
     print("table_name", table_name)
     api = Api(api_key)
-    base = get_base_from_aritable(api, "Automate Base")
-    table = get_table_from_base(base, "Youtubes")
+    base = get_base_from_aritable(api, base_name)
+    table = get_table_from_base(base, table_name)
     table.create(record)
 
 
