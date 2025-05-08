@@ -116,9 +116,6 @@ def save_to_airtable(video_id: str, record: dict) -> None:
     api_key = os.getenv("AIRTABLE_API_KEY")
     if api_key is None:
         raise ValueError("AIRTABLE_API_KEY is not set")
-    base_id = os.getenv("AIRTABLE_BASE_ID")
-    if base_id is None:
-        raise ValueError("AIRTABLE_BASE_ID is not set")
     base_name = os.getenv("AIRTABLE_BASE_NAME")
     if base_name is None:
         raise ValueError("AIRTABLE_BASE_NAME is not set")
@@ -126,7 +123,6 @@ def save_to_airtable(video_id: str, record: dict) -> None:
     if table_name is None:
         raise ValueError("AIRTABLE_TABLE_NAME is not set")
     print("api_key", api_key)
-    print("base_id", base_id)
     print("base_name", base_name)
     print("table_name", table_name)
     api = Api(api_key)
@@ -146,7 +142,7 @@ def get_youtube_metadata(video_id: str) -> Dict:
     return {"title": title, "thumbnail": thumbnail}
 
 
-def process_video(video_id: str, language: str = "ko") -> str:
+def process_video(video_id: str, language: str = "ko"):
     """비디오 처리의 전체 과정을 실행합니다.
 
     Args:
