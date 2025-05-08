@@ -28,6 +28,9 @@ jobs:
         run: |
           echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
           echo "AIRTABLE_API_KEY=${{ secrets.AIRTABLE_API_KEY }}" >> $GITHUB_ENV
+          echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" >> $GITHUB_ENV  
+          echo "WEBHOOK_DOMAIN=${{ vars.WEBHOOK_DOMAIN }}" >> $GITHUB_ENV
+          echo "WEBHOOK_PATH=${{ vars.WEBHOOK_PATH }}" >> $GITHUB_ENV
           echo "AIRTABLE_BASE_NAME=${{ vars.AIRTABLE_BASE_NAME }}" >> $GITHUB_ENV
           echo "AIRTABLE_TABLE_NAME=${{ vars.AIRTABLE_TABLE_NAME }}" >> $GITHUB_ENV
 
