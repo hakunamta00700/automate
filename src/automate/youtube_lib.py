@@ -9,7 +9,7 @@ from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
 from pyairtable import Api, Base, Table
 from youtube_transcript_api import YouTubeTranscriptApi
-
+from .airtable_lib import get_base_from_aritable, get_table_from_base
 load_dotenv()
 
 
@@ -129,14 +129,6 @@ def summarize(transcript: List[Dict]) -> str:
         # 이어서 요청: 지금까지의 assistant 응답을 messages에 추가
         messages.append({"role": "assistant", "content": chunk})
     return full_response
-
-
-def get_base_from_aritable(api: Api, base_name: str) -> Base:
-    return list(filter(lambda item: item.name == base_name, api.bases()))[0]
-
-
-def get_table_from_base(base: Base, table_name: str) -> Table:
-    return list(filter(lambda item: item.name == table_name, base.tables()))[0]
 
 
 def save_to_airtable(video_id: str, record: dict) -> None:
