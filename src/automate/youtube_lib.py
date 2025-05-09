@@ -89,11 +89,24 @@ def summarize(transcript: List[Dict]) -> str:
     formatted_text = format_transcript(transcript)
 
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         messages=[
             {
                 "role": "system",
-                "content": "YouTube 영상의 대본을 간단하게 요약해주세요.",
+                "content": """
+다음은 유튜브 영상의 대본이다. 이 내용을 독자가 쉽게 이해할 수 있도록 핵심만 구조화된 요약문으로 정리해줘. 특히 다음의 요소를 중심으로 작성해줘:
+
+1. ✅ 영상의 핵심 주제
+2. 🧠 전달하고자 하는 주요 메시지
+3. 📌 구체적인 핵심 내용 요약 (항목별로 정리)
+   - 실험, 연구 결과, 주요 논리, 주장 등은 쉽게 풀어 써줘
+   - 필요 시 도표나 수치의 의미도 설명해줘
+4. 🚫 주의사항이나 오해할 수 있는 부분이 있다면 명확히 짚어줘
+5. 💡 영상의 결론 및 실생활 적용 또는 시사점
+6. ✍️ 마지막에 '이 내용을 기반으로 더 알고 싶은 주제'를 추천해줘
+
+너의 요약은 블로그 글처럼 읽기 쉽게 구성해줘. 문어체, 비전문가도 이해할 수 있게 풀어 써 줘. 단순한 요약이 아닌 '정보 전달 + 이해도 상승 + 정리된 구조'를 모두 만족시켜줘.
+""",
             },
             {"role": "user", "content": formatted_text},
         ],
