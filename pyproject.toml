@@ -15,6 +15,7 @@ dependencies = [
     "openai>=1.76.2",
     "bs4>=0.0.2",
     "python-telegram-bot[ext]>=22.0",
+    "loguru>=0.7.3",
 ]
 readme = "README.md"
 requires-python = ">=3.12"

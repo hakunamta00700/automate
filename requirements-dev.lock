@@ -36,6 +36,7 @@ click==8.1.8
     # via automate
 colorama==0.4.6
     # via click
+    # via loguru
     # via tqdm
 defusedxml==0.7.1
     # via youtube-transcript-api
@@ -68,6 +69,8 @@ inflection==0.5.1
     # via pyairtable
 jiter==0.9.0
     # via openai
+loguru==0.7.3
+    # via automate
 openai==1.77.0
     # via automate
 pip==25.1
@@ -123,6 +126,8 @@ tzlocal==5.3.1
 urllib3==2.4.0
     # via pyairtable
     # via requests
+win32-setctime==1.2.0
+    # via loguru
 wsproto==1.2.0
     # via hypercorn
 youtube-transcript-api==1.0.3
