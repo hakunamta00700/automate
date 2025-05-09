@@ -1,12 +1,14 @@
 import os
-from bs4 import BeautifulSoup
+from dataclasses import asdict, dataclass
+from typing import Dict, List
+
 import requests
-from typing import List, Dict
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from openai import OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from pyairtable import Api, Base, Table
 from youtube_transcript_api import YouTubeTranscriptApi
-from dataclasses import dataclass, asdict
 
 load_dotenv()
 
@@ -20,8 +22,10 @@ class Youtube:
     transcript: str
     summary: str
 
+
 import re
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
+
 
 def extract_video_id(url: str) -> str | None:
     """
@@ -85,15 +89,11 @@ def format_transcript(transcript: List[Dict]) -> str:
 def summarize(transcript: List[Dict]) -> str:
     """OpenAI API를 사용하여 대본을 요약합니다."""
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
     formatted_text = format_transcript(transcript)
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": """
+    system_prompt: ChatCompletionMessageParam = {
+        "role": "system",
+        "content": """
 다음은 유튜브 영상의 대본이다. 이 내용을 독자가 쉽게 이해할 수 있도록 핵심만 구조화된 요약문으로 정리해줘. 특히 다음의 요소를 중심으로 작성해줘:
 
 1. ✅ 영상의 핵심 주제
@@ -107,13 +107,28 @@ def summarize(transcript: List[Dict]) -> str:
 
 너의 요약은 블로그 글처럼 읽기 쉽게 구성해줘. 문어체, 비전문가도 이해할 수 있게 풀어 써 줘. 단순한 요약이 아닌 '정보 전달 + 이해도 상승 + 정리된 구조'를 모두 만족시켜줘.
 """,
-            },
-            {"role": "user", "content": formatted_text},
-        ],
-        max_tokens=500,
-    )
+    }
+    user_prompt: ChatCompletionMessageParam = {
+        "role": "user",
+        "content": formatted_text,
+    }
+    messages: list[ChatCompletionMessageParam] = [system_prompt, user_prompt]
 
-    return response.choices[0].message.content
+    full_response = ""
+    while True:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            max_tokens=500,
+        )
+        chunk = response.choices[0].message.content or ""
+        full_response += chunk
+        finish_reason = getattr(response.choices[0], "finish_reason", None)
+        if finish_reason != "length":
+            break
+        # 이어서 요청: 지금까지의 assistant 응답을 messages에 추가
+        messages.append({"role": "assistant", "content": chunk})
+    return full_response
 
 
 def get_base_from_aritable(api: Api, base_name: str) -> Base:
@@ -172,7 +187,7 @@ def process_video(video_id: str, language: str = "ko"):
         url=f"https://www.youtube.com/watch?v={video_id}",
         title=get_youtube_metadata(video_id)["title"],
         thumbnail_url=thumbnail_url,
-        # thumbnail 필드는 thumbnail_url로 부터 이미지를 Attachment로 저장한다.     
+        # thumbnail 필드는 thumbnail_url로 부터 이미지를 Attachment로 저장한다.
         thumbnail=[{"url": thumbnail_url}],
         transcript=format_transcript(transcript),
         summary=summarize(transcript),
