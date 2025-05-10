@@ -66,7 +66,7 @@ def transcribe(video_id, language):
         summary = process_video(video_id, language)
 
         # 성공 메시지 및 요약 내용 출력
-        click.echo(f"\n✅ 성공적으로 처리되었습니다!")
+        click.echo("\n✅ 성공적으로 처리되었습니다!")
         click.echo("\n📝 요약 내용:")
         click.echo("=" * 50)
         click.echo(summary)

@@ -1,17 +1,19 @@
+import asyncio
 import os
+import re
 from dataclasses import asdict, dataclass
 from typing import Dict, List
+from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from dotenv import load_dotenv
 from openai import OpenAI
 from openai.types.chat import ChatCompletionMessageParam
-from pyairtable import Api, Base, Table
+from pyairtable import Api
 from youtube_transcript_api import YouTubeTranscriptApi
-from .airtable_lib import get_base_from_aritable, get_table_from_base
-load_dotenv()
 
+from .airtable_lib import get_base_from_aritable, get_table_from_base
+from .async_lib import to_async
 
 @dataclass
 class Youtube:
@@ -21,10 +23,6 @@ class Youtube:
     thumbnail: List[Dict]
     transcript: str
     summary: str
-
-
-import re
-from urllib.parse import parse_qs, urlparse
 
 
 def extract_video_id(url: str) -> str | None:
@@ -65,6 +63,7 @@ def extract_video_id(url: str) -> str | None:
     return None
 
 
+@to_async
 def get_transcript(video_id: str, language: str = "ko") -> List[Dict]:
     """YouTube 비디오의 대본을 가져옵니다.
 
@@ -76,7 +75,9 @@ def get_transcript(video_id: str, language: str = "ko") -> List[Dict]:
         대본 목록
     """
     transcript = YouTubeTranscriptApi.get_transcript(
-        video_id, languages=[language], preserve_formatting=True
+        video_id,
+        languages=[language],
+        preserve_formatting=True,
     )
     return transcript
 
@@ -86,6 +87,7 @@ def format_transcript(transcript: List[Dict]) -> str:
     return " ".join([entry["text"] for entry in transcript])
 
 
+@to_async
 def summarize(transcript: List[Dict]) -> str:
     """OpenAI API를 사용하여 대본을 요약합니다."""
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -94,7 +96,9 @@ def summarize(transcript: List[Dict]) -> str:
     system_prompt: ChatCompletionMessageParam = {
         "role": "system",
         "content": """
-다음은 유튜브 영상의 대본이다. 이 내용을 독자가 쉽게 이해할 수 있도록 핵심만 구조화된 요약문으로 정리해줘. 특히 다음의 요소를 중심으로 작성해줘:
+다음은 유튜브 영상의 대본이다. 이 내용을 독자가 쉽게 이해할 수 있도록 핵심만 구조화된 요약문으로 정리해줘.
+
+특히 다음의 요소를 중심으로 작성해줘:
 
 1. ✅ 영상의 핵심 주제
 2. 🧠 전달하고자 하는 주요 메시지
@@ -105,7 +109,18 @@ def summarize(transcript: List[Dict]) -> str:
 5. 💡 영상의 결론 및 실생활 적용 또는 시사점
 6. ✍️ 마지막에 '이 내용을 기반으로 더 알고 싶은 주제'를 추천해줘
 
-너의 요약은 블로그 글처럼 읽기 쉽게 구성해줘. 문어체, 비전문가도 이해할 수 있게 풀어 써 줘. 단순한 요약이 아닌 '정보 전달 + 이해도 상승 + 정리된 구조'를 모두 만족시켜줘.
+추가로, 아래 절차에 따라 유형을 인식하고 포맷을 맞춰:
+
+① **영상 유형 자동 분류**: 정치시사 / 분석강의 / 브이로그 / 주장촉구 / 교육지식 / 리뷰 등  
+② **유형에 따라 요약 포맷 조정**:  
+- 뉴스·시사 → 타임라인 중심 정리  
+- 주장·비판 → 논점 요약 + 반론 구조 포함  
+- 강연·교육 → 개념-예시-적용 순  
+- 리뷰 → 항목별 장단점 비교 등  
+
+✍️ 블로그 글처럼 읽기 쉽게 구성해줘. 문어체 사용, 어려운 표현은 쉽게 풀어서 설명해줘.  
+요약문 전체는 500~1000자 내외로, **가독성이 높은 문단과 항목별 구성**을 갖추고 있어야 해.
+
 """,
     }
     user_prompt: ChatCompletionMessageParam = {
@@ -131,7 +146,7 @@ def summarize(transcript: List[Dict]) -> str:
     return full_response
 
 
-def save_to_airtable(video_id: str, record: dict) -> None:
+async def save_to_airtable(video_id: str, record: dict) -> None:
     """요약된 내용을 Airtable에 저장합니다."""
     api_key = os.getenv("AIRTABLE_API_KEY")
     if api_key is None:
@@ -146,15 +161,15 @@ def save_to_airtable(video_id: str, record: dict) -> None:
     print("base_name", base_name)
     print("table_name", table_name)
     api = Api(api_key)
-    base = get_base_from_aritable(api, base_name)
-    table = get_table_from_base(base, table_name)
-    table.create(record)
+    base = await asyncio.to_thread(get_base_from_aritable, api, base_name)
+    table = await asyncio.to_thread(get_table_from_base, base, table_name)
+    await asyncio.to_thread(table.create, record)
 
 
-def get_youtube_metadata(video_id: str) -> Dict:
+async def get_youtube_metadata(video_id: str) -> Dict:
     """YouTube 비디오의 메타데이터를 가져옵니다."""
     url = f"https://www.youtube.com/watch?v={video_id}"
-    response = requests.get(url)
+    response = await asyncio.to_thread(requests.get, url)
     response.raise_for_status()
     soup = BeautifulSoup(response.text, "html.parser")
     title = soup.find("title").text
@@ -162,7 +177,7 @@ def get_youtube_metadata(video_id: str) -> Dict:
     return {"title": title, "thumbnail": thumbnail}
 
 
-def process_video(video_id: str, language: str = "ko"):
+async def process_video(video_id: str, language: str = "ko"):
     """비디오 처리의 전체 과정을 실행합니다.
 
     Args:
@@ -173,15 +188,19 @@ def process_video(video_id: str, language: str = "ko"):
         요약된 내용
     """
 
-    transcript = get_transcript(video_id, language)
+    transcript = await get_transcript(video_id, language)
     thumbnail_url = f"https://img.youtube.com/vi/{video_id}/0.jpg"
+    output = await get_youtube_metadata(video_id)
+    title = output["title"]
+    summary = await summarize(transcript)
     youtube = Youtube(
         url=f"https://www.youtube.com/watch?v={video_id}",
-        title=get_youtube_metadata(video_id)["title"],
+        title=title,
         thumbnail_url=thumbnail_url,
         # thumbnail 필드는 thumbnail_url로 부터 이미지를 Attachment로 저장한다.
         thumbnail=[{"url": thumbnail_url}],
         transcript=format_transcript(transcript),
-        summary=summarize(transcript),
+        summary=summary,
     )
-    save_to_airtable(video_id, asdict(youtube))
+    await save_to_airtable(video_id, asdict(youtube))
+    return youtube

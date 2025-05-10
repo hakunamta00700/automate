@@ -1,4 +1,3 @@
-import sys
 import asyncio
 from hypercorn.config import Config
 from hypercorn.asyncio import serve

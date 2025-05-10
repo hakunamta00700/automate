@@ -1,3 +1,6 @@
+from pyairtable import Api, Base, Table
+
+
 def get_base_from_aritable(api: Api, base_name: str) -> Base:
     return list(filter(lambda item: item.name == base_name, api.bases()))[0]
 
