@@ -36,9 +36,10 @@ async def worker(application):
         try:
             logger.info(f"[WORKER] 처리 시작: {video_id}")
             await send_message(application, f"요약 처리 시작: {video_id}")
-            await process_video(video_id)
+            summary_text = await process_video(video_id)
             logger.info(f"[WORKER] 완료: {video_id}")
             await send_message(application, f"✅ 요약 처리 완료: {video_id}")
+            await send_message(application, summary_text)
         except Exception:
             logger.exception(f"[WORKER] 오류 발생: {video_id}")
             await send_message(application, f"❌ 처리 중 오류 발생: {video_id}")
