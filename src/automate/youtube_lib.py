@@ -139,4 +139,4 @@ async def process_video(video_id: str, language: str = "ko"):
         summary=summary,
     )
     await save_to_airtable(video_id, asdict(youtube))
-    return youtube
+    return summary
