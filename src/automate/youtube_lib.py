@@ -6,13 +6,15 @@ from typing import Dict, List
 from urllib.parse import parse_qs, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from pyairtable import Api
-from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._api import YouTubeTranscriptApi
 
 from .airtable_lib import get_base_from_aritable, get_table_from_base
 from .async_lib import to_async
 from .summary_lib import format_transcript, summarize
+
+
 @dataclass
 class Youtube:
     url: str
@@ -80,17 +82,18 @@ def get_transcript(video_id: str, language: str = "ko") -> List[Dict]:
         )
         return transcript
     except Exception as e:
-        print(f"Error getting transcript: {e}")
-        transcript = YouTubeTranscriptApi.get_transcript(
-            video_id,
-            languages=["en"],
-            preserve_formatting=True,
-        )
-        return transcript
-    finally:
-        raise Exception("Failed to get transcript")
-
-
+        print(f"Error getting transcript in '{language}': {e}")
+        try:
+            transcript = YouTubeTranscriptApi.get_transcript(
+                video_id,
+                preserve_formatting=True,
+            )
+            return transcript
+        except Exception as e2:
+            print(f"Error getting transcript in 'en': {e2}")
+            raise Exception(
+                "Failed to get transcript in both requested language and English."
+            )
 
 
 async def save_to_airtable(video_id: str, record: dict) -> None:
