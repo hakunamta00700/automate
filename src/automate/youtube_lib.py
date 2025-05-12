@@ -81,14 +81,14 @@ def get_transcript(video_id: str, language: str = "ko") -> List[Dict]:
         return transcript
     except Exception as e:
         print(f"Error getting transcript: {e}")
-    finally:
         transcript = YouTubeTranscriptApi.get_transcript(
             video_id,
             languages=["en"],
             preserve_formatting=True,
         )
         return transcript
-    return transcript
+    finally:
+        raise Exception("Failed to get transcript")
 
 
 
