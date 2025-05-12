@@ -19,7 +19,8 @@ CHANNEL_CHAT_ID = os.getenv("CHANNEL_CHAT_ID")
 if not CHANNEL_CHAT_ID:
     raise RuntimeError("CHANNEL_CHAT_ID is not set in environment variables.")
 CHANNEL_CHAT_ID = int(CHANNEL_CHAT_ID)
-
+TARGET_LLM_MODEL = os.getenv("TARGET_LLM_MODEL", "gemini")
+print(f"TARGET_LLM_MODEL: {TARGET_LLM_MODEL}")
 CMD_PREFIX = "요약|"
 # 전역 큐
 task_queue = asyncio.Queue()

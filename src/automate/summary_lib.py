@@ -1,14 +1,15 @@
 import os
 from typing import Dict, List
 
-from langchain.chains import LLMChain
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
-from langchain_community.chat_models import ChatGoogleGenerativeAI
+import google.genai as genai
+import google.genai.types as types
+from loguru import logger
 
-from .async_lib import to_async
+TARGET_LLM_MODEL = os.getenv("TARGET_LLM_MODEL", "gemini")
+API_KEY = os.getenv("GOOGLE_API_KEY", "")
 
-TARGET_LLM_MODEL = os.getenv("TARGET_LLM_MODEL", "openai")
+# The google-genai SDK will use the GOOGLE_API_KEY environment variable automatically
+# No need to call configure or pass the key directly if the env var is set
 
 
 def format_transcript(transcript: List[Dict]) -> str:
@@ -16,66 +17,121 @@ def format_transcript(transcript: List[Dict]) -> str:
     return " ".join([entry["text"] for entry in transcript])
 
 
-from loguru import logger
-
-def get_llm(model_name: str, api_key: str = None):
-    logger.info(f"LLM 모델 초기화: {model_name}")
-    if model_name == "openai":
-        if api_key is None:
-            api_key = os.getenv("OPENAI_API_KEY")
-            logger.debug("OpenAI API 키를 환경변수에서 로드")
-        return ChatOpenAI(openai_api_key=api_key, model="gpt-4o")
-    elif model_name == "gemini":
-        if api_key is None:
-            api_key = os.getenv("GEMINI_API_KEY") 
-            logger.debug("Gemini API 키를 환경변수에서 로드")
-        return ChatGoogleGenerativeAI(google_api_key=api_key)
-    else:
-        logger.error(f"지원하지 않는 모델: {model_name}")
-        raise ValueError("지원하지 않는 모델입니다. (openai, gemini만 지원)")
-
-
-@to_async
-def summarize(
-    transcript: List[Dict], model_name: str = "openai", api_key: str = None
+async def summarize(
+    transcript: List[Dict],
+    model_name: str = "gemini-1.5-flash",
 ) -> str:
     """
-    OpenAI 또는 Gemini API를 사용하여 대본을 요약합니다.
+    Gemini API를 사용하여 대본을 요약합니다. (비동기 실행)
     """
     logger.info(f"대본 요약 시작 (모델: {model_name})")
     formatted_text = format_transcript(transcript)
 
-    system_prompt = """
-다음은 유튜브 영상의 대본이다. 이 내용을 독자가 쉽게 이해할 수 있도록 핵심만 구조화된 요약문으로 정리해줘.
+    system_prompt_text = """
+다음은 유튜브 영상의 전체 또는 일부 대본입니다. 이 대본의 내용을 먼저 분석하고, 다음 절차에 따라 정리해줘:
 
-특히 다음의 요소를 중심으로 작성해줘:
+---
+# 📂 **1단계 – 대본의 성격 판별**
+다음 중 어떤 유형인지 판단해줘:
+  - (A) 실용 정보/방법/노하우 제공형
+  - (B) 뉴스/정치/사건/이슈 전달형
+  - (C) 감성 서사형(스토리텔링, 경험 공유, 에세이형)
 
-1. ✅ 영상의 핵심 주제
-2. 🧠 전달하고자 하는 주요 메시지
-3. 📌 구체적인 핵심 내용 요약 (항목별로 정리)
-   - 실험, 연구 결과, 주요 논리, 주장 등은 쉽게 풀어 써줘
-   - 필요 시 도표나 수치의 의미도 설명해줘
-4. 🚫 주의사항이나 오해할 수 있는 부분이 있다면 명확히 짚어줘
-5. 💡 영상의 결론 및 실생활 적용 또는 시사점
-6. ✍️ 마지막에 '이 내용을 기반으로 더 알고 싶은 주제'를 추천해줘
 
-추가로, 아래 절차에 따라 유형을 인식하고 포맷을 맞춰:
+# 🗂️ **2단계 – 성격에 따라 다음 형식으로 정리해줘**
 
-① **영상 유형 자동 분류**: 정치시사 / 분석강의 / 브이로그 / 주장촉구 / 교육지식 / 리뷰 등  
-② **유형에 따라 요약 포맷 조정**:  
-- 뉴스·시사 → 타임라인 중심 정리  
-- 주장·비판 → 논점 요약 + 반론 구조 포함  
-- 강연·교육 → 개념-예시-적용 순  
-- 리뷰 → 항목별 장단점 비교 등  
+## **(A) 실용 정보/노하우형이면:**
+   요약이나 정리를 할 때 **내용 손실 없이**, 특히 **대화나 설명 중 등장한 핵심 방법/과정/전략**이 빠지지 않도록 다음 기준에 따라 정리해줘:
 
-✍️ 블로그 글처럼 읽기 쉽게 구성해줘. 문어체 사용, 어려운 표현은 쉽게 풀어서 설명해줘.  
-요약문 전체는 500~1000자 내외로, **가독성이 높은 문단과 항목별 구성**을 갖추고 있어야 해.
+   1. ✅ **영상의 핵심 주제**를 한 문장으로 요약하되, 영상 속 표현을 일부 인용해 정확도를 높여줘.
+
+   2. 🛠️ **영상에서 소개된 구체적인 방법/단계/전략은 축약하지 말고 모두 살려줘.**
+      - 단계별 설명이 있다면 순서대로 명확하게 정리하고,
+      - 영상 속 표현이나 예시가 있다면 그것도 함께 적어줘.
+      - 설명 도중 나온 팁이나 경고, 유용한 보조 정보도 반드시 포함해줘.
+
+   3. 📋 **영상의 전체 흐름을 요약하되**, 설명 순서와 논리적 전개(예: 문제 제기 → 해결 제안 → 실천 단계 → 결과 예측)를 따라가며 정리해줘.
+
+   4. 📎 **대화체에서 언급된 사례나 비교**, 관찰 결과, 반복 강조된 포인트는 누락 없이 서술형으로 포함해줘.
+
+   5. 💡 **실생활에서 어떻게 적용할 수 있는지**를 요약 마지막에 명시해줘. 영상 속 실제 사용 예가 있다면 그것도 같이 포함해줘.
+
+   6. ✍️ 문체는 문어체로 구성하되, **원문 표현의 핵심 어휘나 감정은 유지해줘.**
+
+   7. 📌 누락 방지를 위해, **영상 내 주요 인물/화자/내레이션의 설명 방식도 반영해서 서술**해줘. 예: "영상에서 설명자는 '이렇게 하면 누구나 쉽게 따라할 수 있습니다'라고 말하며…"
+
+   이 구조에 맞게 정리해줘:
+---
+    ✅ 핵심 주제  
+    🛠️ 소개된 방법 및 상세 과정  
+    📋 영상의 논리적 흐름  
+    📎 대화·예시·강조 표현  
+    🚀 실생활 적용 및 요약  
+
+
+----
+## **(B) 뉴스/정치/사건/이슈 전달형**
+
+
+1. ✅ **핵심 이슈/주제**를 1문장으로 요약해줘.
+   - 영상 내 화자의 표현을 일부 인용해서 정확하게 드러내줘.
+
+2. 📌 **사건의 배경과 맥락**을 간략하게 설명해줘.
+   - 왜 지금 이 일이 중요한지, 어떤 전후 맥락에서 벌어졌는지를 정리해줘.
+
+3. 🧭 **이슈의 전개 순서**를 시간 흐름 또는 논리 흐름에 따라 정리해줘.
+   - 누가, 언제, 어디서, 무엇을, 왜, 어떻게 했는지를 중심으로.
+   - 대화체의 핵심 주장이나 인용 발언도 포함해줘.
+
+4. 🔎 **핵심 논점이나 쟁점**, 서로 다른 입장 또는 시각이 있다면 그것도 정리해줘.
+   - 영상 속 등장인물(화자, 기자, 정치인 등)의 발언도 요약 인용해줘.
+
+5. 🚨 **시청자가 오해하기 쉬운 부분**이나 **주의할 점**, 보충 설명이 필요한 배경 정보도 제공해줘.
+
+6. 💡 마지막에는 이 사안이 **우리 일상이나 사회에 어떤 시사점**을 가지는지 정리해줘.
+
+문체는 정제된 문어체로, 블로그 기사처럼 구성해줘.  
+**요약하되 사건의 뉘앙스, 강도, 논리 흐름은 반드시 유지해줘.**
+
+---
+    ✅ 핵심 이슈 요약  
+    📌 사건 배경과 맥락  
+    🧭 사건의 전개  
+    🔎 쟁점과 입장 정리  
+    🚨 주의/보충 설명  
+    💡 시사점 및 결론
+
+
+## (C) 감성 서사형(스토리텔링, 경험 공유, 에세이형)
+
+다음은 감성적인 이야기 또는 개인적 경험이 담긴 영상의 대본입니다. 영상 자체를 보지 않더라도, 이 요약만으로 **스토리의 흐름과 감정을 그대로 느낄 수 있도록** 다음 기준에 따라 정리해줘:
+
+1. ✨ 이야기의 주제를 한 문장으로 요약해줘.
+2. 📖 도입 → 전개 → 전환 → 절정 → 결말의 구조로, 시간의 흐름과 감정의 흐름을 따라가며 서술해줘.
+3. 💬 인상 깊었던 표현이나 대사는 감정을 살려서 인용해줘.
+4. 🌊 이야기의 감정 전환점은 무엇이었는지 짚어줘.
+5. 💡 이 이야기가 주는 여운이나 메시지를 정리해줘.
+6. 🌿 이 이야기를 본 사람이라면 어떤 감정을 느끼게 될지 감성적으로 묘사해줘.
+
+글 전체는 마치 블로그의 감상글처럼, 따뜻하고 여운 있는 문체로 작성해줘.
+
+---
+    ✨ 이야기의 핵심 주제  
+    📖 스토리 흐름 요약 (시간 흐름에 따라 감정 중심으로)  
+    💬 인상 깊은 표현/대사 (원문에서 그대로 인용 or 감정이 담긴 말로 풀어냄)  
+    🌊 감정의 흐름과 전환점 (언제 어떻게 울컥했는지, 마음이 바뀌었는지 등)  
+    💡 전달하려는 메시지 / 여운  
+    🌿 독자(시청자)로서 느낄 수 있는 감정 또는 생각의 변화
+
 """
-    prompt = PromptTemplate(
-        input_variables=["transcript"],
-        template=system_prompt + "\n\n---\n\n{transcript}",
+    prompt = system_prompt_text + "\n\n---\n\n대본:\n" + formatted_text
+
+    client = genai.Client()
+    response = await client.aio.models.generate_content(
+        model=model_name,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_modalities=["TEXT"],
+        ),
     )
-    llm = get_llm(TARGET_LLM_MODEL, api_key)
-    chain = LLMChain(llm=llm, prompt=prompt)
-    result = chain.run(transcript=formatted_text)
-    return result
+    return response.text

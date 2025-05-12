@@ -7,8 +7,6 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 from bs4 import BeautifulSoup
-from openai import OpenAI
-from openai.types.chat import ChatCompletionMessageParam
 from pyairtable import Api
 from youtube_transcript_api import YouTubeTranscriptApi
 
