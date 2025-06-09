@@ -121,7 +121,7 @@ async def worker(application):
                 logger.info(f"[WORKER] 처리 시작: {video_id}")
                 await send_message(application, f"요약 처리 시작: {video_id}")
                 video_url = f"https://www.youtube.com/watch?v={video_id}"
-                await run_command("/root/iscripts/summary_yt.sh", video_url, "/root/tempyt")
+                await run_command("/root/iscripts/summary_yt", video_url, "/root/tempyt")
                 logger.info(f"[WORKER] 완료: {video_id}")
 
                 await send_message(application, f"✅ 요약 처리 완료: {video_id}")
