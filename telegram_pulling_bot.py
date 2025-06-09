@@ -1,6 +1,7 @@
 import asyncio
 import os
-
+import re
+from urllib.parse import urlparse, parse_qs
 from dotenv import load_dotenv
 from loguru import logger
 from telegram import Update
@@ -25,10 +26,54 @@ CMD_PREFIX = "요약|"
 # 전역 큐
 task_queue = asyncio.Queue()
 
+address_dict = {
+    "요약":"http://pringles.iptime.org/webhook/e171b96e-3318-4cba-a2b9-60f9b353d406"
+}
+
+
+def extract_youtube_video_id(url):
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname
+    path = parsed_url.path
+
+    # 1. youtu.be short URL
+    if hostname in ['youtu.be']:
+        return path.lstrip('/')
+
+    # 2. youtube.com/watch?v=VIDEO_ID
+    if 'youtube.com' in hostname:
+        if path == '/watch':
+            query = parse_qs(parsed_url.query)
+            return query.get('v', [None])[0]
+
+        # 3. youtube.com/embed/VIDEO_ID or /shorts/VIDEO_ID
+        match = re.match(r'^/(embed|shorts)/([^/?]+)', path)
+        if match:
+            return match.group(2)
+
+    return None
 
 async def send_message(application, text: str):
     await application.bot.send_message(chat_id=CHANNEL_CHAT_ID, text=text)
 
+async def run_command(*command_args):
+    process = await asyncio.create_subprocess_exec(
+        *command_args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+
+    stdout, stderr = await process.communicate()
+
+    print("STDOUT:")
+    print(stdout.decode())
+
+    print("STDERR:")
+    print(stderr.decode())    
+
+def get_summary_text(video_id: str):
+    with open(f"/root/tempyt/{video_id}.ko.txt", "r") as f:
+        return f.read()
 
 async def worker(application):
     while True:
@@ -36,10 +81,12 @@ async def worker(application):
         try:
             logger.info(f"[WORKER] 처리 시작: {video_id}")
             await send_message(application, f"요약 처리 시작: {video_id}")
-            summary_text = await process_video(video_id)
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            await run_command("~/iscripts/summary_yt.sh", video_url, "/root/tempyt")
             logger.info(f"[WORKER] 완료: {video_id}")
+
             await send_message(application, f"✅ 요약 처리 완료: {video_id}")
-            await send_message(application, summary_text)
+            await send_message(application, get_summary_text(video_id))
         except Exception:
             logger.exception(f"[WORKER] 오류 발생: {video_id}")
             await send_message(application, f"❌ 처리 중 오류 발생: {video_id}")
@@ -54,21 +101,36 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.strip()
     logger.info(f"Received message: {text}")
 
-    if text.startswith(CMD_PREFIX):
-        try:
+    cmd_prefix = text.split("|")[0].strip()
+    match cmd_prefix:
+        case "요약":
+            logger.info(f"요약 요청: {text}")
             video_url = text.split("|", 1)[1]
-            video_id = extract_video_id(video_url)
+            video_id = extract_youtube_video_id(video_url)
             await task_queue.put(video_id)
-
-            logger.info(f"✅ 작업 큐에 추가됨: {video_id}")
             await update.message.reply_text(
                 f"✅ 요청이 큐에 추가되었습니다: {video_id}"
             )
-        except Exception as e:
-            logger.exception(f"Error handling message: {e}")
-            await update.message.reply_text(f"❌ 오류 발생: {e}")
-    else:
-        logger.debug(f"무시된 메시지: {CMD_PREFIX} 로 시작하지 않음")
+        case "포스팅":
+            logger.info(f"포스팅 요청: {text}")
+        case _:
+            logger.info(f"무시된 메시지: {text}")
+
+    # if text.startswith(CMD_PREFIX):
+    #     try:
+    #         video_url = text.split("|", 1)[1]
+    #         video_id = extract_video_id(video_url)
+    #         await task_queue.put(video_id)
+
+    #         logger.info(f"✅ 작업 큐에 추가됨: {video_id}")
+    #         await update.message.reply_text(
+    #             f"✅ 요청이 큐에 추가되었습니다: {video_id}"
+    #         )
+    #     except Exception as e:
+    #         logger.exception(f"Error handling message: {e}")
+    #         await update.message.reply_text(f"❌ 오류 발생: {e}")
+    # else:
+    #     logger.debug(f"무시된 메시지: {CMD_PREFIX} 로 시작하지 않음")
 
 
 def main():
