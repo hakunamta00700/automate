@@ -79,7 +79,7 @@ async def send_message(application, text: str):
 
 
 async def run_command(*command_args):
-    process = await asyncio.create_subprocess_exec(
+    process = await asyncio.create_subprocess_shell(
         command_args[0], *command_args[1:], stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )
 
