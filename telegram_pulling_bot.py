@@ -1,14 +1,14 @@
 import asyncio
 import os
 import re
-from urllib.parse import urlparse, parse_qs
 from dataclasses import dataclass
+from urllib.parse import parse_qs, urlparse
 
+import aiohttp
 from dotenv import load_dotenv
 from loguru import logger
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
-import aiohttp
 
 load_dotenv()
 logger.info("Starting telegram_pulling_bot.py")
@@ -35,7 +35,9 @@ class WebHook:
 # 전역 큐
 task_queue = asyncio.Queue()
 
-address_dict = {"요약": "http://pringles.iptime.org/webhook/e171b96e-3318-4cba-a2b9-60f9b353d406"}
+address_dict = {
+    "요약": "http://pringles.iptime.org/webhook/e171b96e-3318-4cba-a2b9-60f9b353d406"
+}
 
 
 def extract_youtube_video_id(url):
@@ -119,7 +121,7 @@ async def worker(application):
                 logger.info(f"[WORKER] 처리 시작: {video_id}")
                 await send_message(application, f"요약 처리 시작: {video_id}")
                 video_url = f"https://www.youtube.com/watch?v={video_id}"
-                await run_command("~/iscripts/summary_yt.sh", video_url, "/root/tempyt")
+                await run_command("/root/iscripts/summary_yt.sh", video_url, "/root/tempyt")
                 logger.info(f"[WORKER] 완료: {video_id}")
 
                 await send_message(application, f"✅ 요약 처리 완료: {video_id}")
@@ -132,12 +134,14 @@ async def worker(application):
                 logger.info(f"[WORKER] 처리 시작: {task.value}")
                 await send_message(application, f"쇼츠 대본생성 시작: {task.value}")
                 target_url = f"{WebHook.shorts}?url={task.value}"
-                await fetch_data(target_url)
+                res = await fetch_data(target_url)
                 logger.info(f"[WORKER] 완료: {task.value}")
                 await send_message(application, f"✅ 쇼츠 처리 완료: {task.value}")
             except Exception as e:
                 logger.exception(f"[WORKER] 오류 발생: {task.value}")
-                await send_message(application, f"❌ 처리 중 오류 발생: {task.value} - {e}")
+                await send_message(
+                    application, f"❌ 처리 중 오류 발생: {task.value} - {e}"
+                )
         else:
             logger.error(f"[WORKER] 유효하지 않은 작업 유형: {task.kind}")
             await send_message(application, f"❌ 유효하지 않은 작업 유형: {task.kind}")
