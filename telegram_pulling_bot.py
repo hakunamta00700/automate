@@ -80,7 +80,9 @@ async def send_message(application, text: str):
 
 async def run_command(*command_args):
     process = await asyncio.create_subprocess_shell(
-        command_args[0], *command_args[1:], stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        " ".join(command_args),
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
     )
 
     stdout, stderr = await process.communicate()
@@ -120,7 +122,7 @@ async def worker(application):
                 video_id = task.value
                 logger.info(f"[WORKER] 처리 시작: {video_id}")
                 await send_message(application, f"요약 처리 시작: {video_id}")
-                video_url = f"https://www.youtube.com/watch?v={video_id}"
+                video_url = f"\"https://www.youtube.com/watch?v={video_id}\""
                 await run_command("/root/iscripts/summary_yt", video_url, "/root/tempyt")
                 logger.info(f"[WORKER] 완료: {video_id}")
 
