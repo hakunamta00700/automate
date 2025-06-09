@@ -125,9 +125,8 @@ async def worker(application):
                 video_url = f"\"https://www.youtube.com/watch?v={video_id}\""
                 await run_command("/root/iscripts/summary_yt", video_url, "/root/tempyt")
                 logger.info(f"[WORKER] 완료: {video_id}")
-
                 await send_message(application, f"✅ 요약 처리 완료: {video_id}")
-                await send_message(application, get_summary_text(video_id))
+                
             except Exception:
                 logger.exception(f"[WORKER] 오류 발생: {video_id}")
                 await send_message(application, f"❌ 처리 중 오류 발생: {video_id}")
