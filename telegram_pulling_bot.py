@@ -78,9 +78,9 @@ async def send_message(application, text: str):
     await application.bot.send_message(chat_id=CHANNEL_CHAT_ID, text=text)
 
 
-async def run_command(*command_args):
+async def run_command(command: str):
     process = await asyncio.create_subprocess_shell(
-        " ".join(command_args),
+        command,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -123,7 +123,8 @@ async def worker(application):
                 logger.info(f"[WORKER] 처리 시작: {video_id}")
                 await send_message(application, f"요약 처리 시작: {video_id}")
                 video_url = f"\"https://www.youtube.com/watch?v={video_id}\""
-                await run_command("/root/iscripts/summary_yt", video_url, "/root/tempyt")
+                command = f"/root/iscripts/summary_yt {video_url} /root/tempyt"
+                await run_command(command)
                 logger.info(f"[WORKER] 완료: {video_id}")
                 await send_message(application, f"✅ 요약 처리 완료: {video_id}")
                 
