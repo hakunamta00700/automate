@@ -1,3 +1,4 @@
+import time
 import asyncio
 import os
 import re
@@ -202,6 +203,36 @@ def main():
     logger.info("🤖 Bot polling 시작")
     app.run_polling()
 
+def run_with_restart():
+    """봇을 실행하고 오류 발생 시 자동 재시작"""
+    retry_count = 0
+    max_retries = 5  # 최대 재시도 횟수
+    base_delay = 5   # 기본 대기 시간 (초)
+    
+    while True:
+        try:
+            logger.info(f"🚀 봇 시작 중... (시도 #{retry_count + 1})")
+            main()
+            break  # 정상 종료 시 루프 탈출
+            
+        except KeyboardInterrupt:
+            logger.info("⏹️ 사용자에 의한 종료")
+            break
+            
+        except Exception as e:
+            retry_count += 1
+            delay = min(base_delay * (2 ** retry_count), 300)  # 최대 5분 대기
+            
+            logger.error(f"❌ 봇 오류 발생 (시도 #{retry_count}): {e}")
+            logger.exception("전체 스택 트레이스:")
+            
+            if retry_count >= max_retries:
+                logger.error(f"💀 최대 재시도 횟수({max_retries}) 초과. 봇 종료.")
+                break
+            
+            logger.info(f"⏳ {delay}초 후 재시작...")
+            time.sleep(delay)    
+
 
 if __name__ == "__main__":
-    main()
+    run_with_restart()
