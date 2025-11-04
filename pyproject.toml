@@ -1,5 +1,5 @@
 [project]
-name = "automate"
+name = "automate-youtube-summarize"
 version = "0.2.6"
 description = "YouTube 영상 대본 추출, AI 요약, Airtable 저장 및 텔레그램 봇 기능을 제공하는 자동화 도구"
 readme = "README.md"
