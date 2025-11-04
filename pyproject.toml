@@ -1,55 +1,89 @@
 [project]
 name = "automate"
 version = "0.2.6"
-description = "private automate server"
-dependencies = [
- "click>=8.1.8",
- "hypercorn>=0.17.3",
- "fastapi>=0.115.12",
- "python-dotenv>=1.1.0",
- "pyairtable>=3.1.1",
- "openai>=1.78.0",
- "bs4>=0.0.2",
- "python-telegram-bot[ext]>=22.0",
- "loguru>=0.7.3",
- "pyzmq>=26.4.0",
- "tqdm>=4.67.1",
- "google-genai>=1.14.0",
- "aiohttp>=3.9.3",
- "uv-easy>=0.2.5",
- "youtube-transcript-api==1.2.3",
-]
+description = "YouTube 영상 대본 추출, AI 요약, Airtable 저장 및 텔레그램 봇 기능을 제공하는 자동화 도구"
 readme = "README.md"
 requires-python = ">=3.12"
+license = { text = "MIT" }
+keywords = [
+    "youtube",
+    "transcript",
+    "ai",
+    "summarization",
+    "airtable",
+    "telegram",
+    "bot",
+    "automation",
+    "gemini",
+    "openai",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+    "Topic :: Communications :: Chat",
+]
+dependencies = [
+    "click>=8.1.8",
+    "hypercorn>=0.17.3",
+    "fastapi>=0.115.12",
+    "python-dotenv>=1.1.0",
+    "pyairtable>=3.1.1",
+    "openai>=1.78.0",
+    "bs4>=0.0.2",
+    "python-telegram-bot[ext]>=22.0",
+    "loguru>=0.7.3",
+    "pyzmq>=26.4.0",
+    "tqdm>=4.67.1",
+    "google-genai>=1.14.0",
+    "aiohttp>=3.9.3",
+    "uv-easy>=0.2.5",
+    "youtube-transcript-api==1.2.3",
+]
 [[project.authors]]
 name = "David Cho"
 email = "csi00700@gmail.com"
+[project.urls]
+Homepage = "https://github.com/hakunamta00700/automate"
+Repository = "https://github.com/hakunamta00700/automate"
+Issues = "https://github.com/hakunamta00700/automate/issues"
 
 [build-system]
-requires = [ "hatchling",]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
 automate = "automate.cli:cli"
 
 [project.optional-dependencies]
-dev = [ "autopep8>=2.3.2", "autoflake>=2.3.1", "isort>=6.0.1", "black>=25.1.0",]
+dev = ["autopep8>=2.3.2", "autoflake>=2.3.1", "isort>=6.0.1", "black>=25.1.0"]
 
 [tool.hatch.metadata]
 allow-direct-references = true
 
-[tool.hatch.build]
-artifacts = [ "src/automate/**/*.py", "src/automate/**/*.pyc",]
-
 [tool.hatch.build.targets.wheel]
-packages = [ "src/automate",]
+packages = ["src/automate"]
 
 [tool.hatch.build.targets.sdist]
-include = [ "src/**", "pyproject.toml", "README.md",]
-exclude = [ "*.pyc", "dist", "build/**",]
+include = ["src/**", "pyproject.toml", "README.md", ".python-version"]
+exclude = [
+    "*.pyc",
+    "__pycache__",
+    "*.pyo",
+    "*.pyd",
+    ".env*",
+    ".git/**",
+    "dist/**",
+    "build/**",
+    "*.egg-info/**",
+]
 
 [dependency-groups]
-dev = [
-    "autoflake>=2.3.1",
-    "ruff>=0.14.3",
-]
+dev = ["autoflake>=2.3.1", "ruff>=0.14.3"]
