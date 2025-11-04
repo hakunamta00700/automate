@@ -1,0 +1,39 @@
+name: Transcribe from URL (Dispatch)
+
+on:
+  repository_dispatch:
+    types: [transcribe_from_url]
+
+jobs:
+  transcribe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pip, wheel, and build tools
+        run: |
+          python -m pip install --upgrade pip wheel
+
+      - name: Install package (editable mode)
+        run: |
+          pip install -e .
+
+      - name: Set environment variables
+        run: |
+          echo "OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}" >> $GITHUB_ENV
+          echo "AIRTABLE_API_KEY=${{ secrets.AIRTABLE_API_KEY }}" >> $GITHUB_ENV
+          echo "BOT_TOKEN=${{ secrets.BOT_TOKEN }}" >> $GITHUB_ENV  
+          echo "WEBHOOK_DOMAIN=${{ vars.WEBHOOK_DOMAIN }}" >> $GITHUB_ENV
+          echo "WEBHOOK_PATH=${{ vars.WEBHOOK_PATH }}" >> $GITHUB_ENV
+          echo "AIRTABLE_BASE_NAME=${{ vars.AIRTABLE_BASE_NAME }}" >> $GITHUB_ENV
+          echo "AIRTABLE_TABLE_NAME=${{ vars.AIRTABLE_TABLE_NAME }}" >> $GITHUB_ENV
+
+      - name: Run automate transcribe-from-url
+        run: |
+          automate transcribe-from-url "${{ github.event.client_payload.url }}"
