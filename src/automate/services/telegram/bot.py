@@ -2,16 +2,15 @@
 
 import asyncio
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import aiohttp
 from loguru import logger
 from telegram import Update
 from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
 
 from ...core.config import get_settings
-from ...core.constants import CmdPrefix, Task, TaskKind, WebHook
-from ...utils.youtube_utils import extract_video_id
+from .tasks import get_task_by_command_prefix
 
 if TYPE_CHECKING:
     from telegram.ext import Application
@@ -20,115 +19,45 @@ if TYPE_CHECKING:
 task_queue = asyncio.Queue()
 
 
-async def send_message(application: "Application", text: str) -> None:
-    """텔레그램 채널에 메시지를 전송합니다."""
-    settings = get_settings()
-    await application.bot.send_message(chat_id=settings.channel_chat_id_int, text=text)
+@dataclass
+class QueuedTask:
+    """큐에 들어갈 Task 정보"""
 
-
-async def run_command(command: str) -> None:
-    """명령어를 실행합니다."""
-    process = await asyncio.create_subprocess_shell(
-        command,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-
-    stdout, stderr = await process.communicate()
-
-    print("STDOUT:")
-    print(stdout.decode())
-
-    print("STDERR:")
-    print(stderr.decode())
-
-
-def get_summary_text(video_id: str) -> str:
-    """요약 텍스트를 읽습니다."""
-    with open(f"/root/tempyt/{video_id}.ko.txt", "r") as f:
-        return f.read()
-
-
-async def fetch_data(url: str) -> str | None:
-    """
-    주어진 URL로 GET 요청을 보내고 응답 텍스트를 반환합니다.
-    """
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            # 응답 상태 코드 확인
-            if response.status == 200:
-                # 응답 본문을 텍스트로 읽기
-                return await response.text()
-            else:
-                print(f"Error: {response.status} - {response.reason}")
-                return None
+    task_name: str
+    value: str
 
 
 async def worker(application: "Application") -> None:
     """작업 처리 워커"""
+    from .tasks import get_task_by_name
+
     while True:
         try:
-            task: Task = await task_queue.get()
-            if task.kind == TaskKind.SUMMARY:
-                try:
-                    video_id = task.value
-                    logger.info(f"[WORKER] 처리 시작: {video_id}")
-                    await send_message(application, f"요약 처리 시작: {video_id}")
-                    video_url = f'"https://www.youtube.com/watch?v={video_id}"'
-                    command = f"/root/iscripts/summary_yt {video_url} /root/tempyt"
-                    await run_command(command)
-                    logger.info(f"[WORKER] 완료: {video_id}")
-                    await send_message(application, f"✅ 요약 처리 완료: {video_id}")
+            queued_task: QueuedTask = await task_queue.get()
+            task_cls = get_task_by_name(queued_task.task_name)
 
-                except Exception:
-                    logger.exception(f"[WORKER] 오류 발생: {video_id}")
-                    await send_message(application, f"❌ 처리 중 오류 발생: {video_id}")
-            elif task.kind == TaskKind.SHORTS:
-                try:
-                    logger.info(f"[WORKER] 처리 시작: {task.value}")
-                    await send_message(application, f"쇼츠 대본생성 시작: {task.value}")
-                    target_url = f"{WebHook.shorts}?url={task.value}"
-                    res = await fetch_data(target_url)
-                    logger.info(f"[WORKER] 완료: {task.value}")
-                    await send_message(application, f"✅ 쇼츠 처리 완료: {task.value}")
-                except Exception as e:
-                    logger.exception(f"[WORKER] 오류 발생: {task.value}")
-                    await send_message(
-                        application, f"❌ 처리 중 오류 발생: {task.value} - {e}"
-                    )
-            else:
-                logger.error(f"[WORKER] 유효하지 않은 작업 유형: {task.kind}")
-                await send_message(
-                    application, f"❌ 유효하지 않은 작업 유형: {task.kind}"
-                )
+            if not task_cls:
+                logger.error(f"[WORKER] 등록되지 않은 Task: {queued_task.task_name}")
+                continue
+
+            # Task 인스턴스 생성 및 실행
+            task_instance = task_cls()
+            await task_instance.execute(queued_task.value, application)
+
         except Exception as e:
             logger.exception(f"[WORKER] 작업 처리 중 오류: {e}")
-            await send_message(application, f"❌ 워커 오류: {e}")
+            try:
+                # 에러 메시지 전송을 위한 헬퍼 함수
+                from ...core.config import get_settings
+
+                settings = get_settings()
+                await application.bot.send_message(
+                    chat_id=settings.channel_chat_id_int, text=f"❌ 워커 오류: {e}"
+                )
+            except Exception:
+                pass
         finally:
             task_queue.task_done()
-
-
-async def do_summary(video_url: str, update: Update) -> None:
-    """요약 작업을 큐에 추가합니다."""
-    video_id = extract_video_id(video_url)
-    if video_id:
-        await task_queue.put(Task(kind=TaskKind.SUMMARY, value=video_id))
-        logger.info(f"✅ 작업 큐에 추가됨: {video_id}")
-        await update.message.reply_text(f"✅ 요청이 큐에 추가되었습니다: {video_id}")
-    else:
-        await update.message.reply_text("❌ 유효하지 않은 YouTube URL입니다.")
-
-
-async def do_make_shorts(text: str, update: Update) -> None:
-    """쇼츠 작업을 큐에 추가합니다."""
-    try:
-        page_url = text.split("|", 1)[1]
-        await task_queue.put(Task(kind=TaskKind.SHORTS, value=page_url))
-        logger.info(f"✅ 작업 큐에 추가됨: {page_url}")
-        await update.message.reply_text(f"✅ 요청이 큐에 추가되었습니다: {page_url}")
-    except Exception as e:
-        logger.exception(f"Error handling message: {e}")
-        await update.message.reply_text(f"❌ 오류 발생: {e}")
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -147,15 +76,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         cmd_prefix = text.split("|")[0].strip()
         remain_text = text.split("|", 1)[1].strip()
 
-        match cmd_prefix:
-            case "요약":
-                logger.info(f"요약 요청: {text}")
-                await do_summary(remain_text, update)
-            case "쇼츠":
-                logger.info(f"쇼츠 요청: {text}")
-                await do_make_shorts(remain_text, update)
-            case _:
-                logger.info(f"무시된 메시지: {text}")
+        # Task 레지스트리에서 명령어 접두사로 Task 찾기
+        task_cls = get_task_by_command_prefix(f"{cmd_prefix}|")
+
+        if not task_cls:
+            logger.info(f"무시된 메시지 (등록되지 않은 명령어): {text}")
+            return
+
+        logger.info(f"{task_cls.TASK_NAME} 요청: {text}")
+
+        # Task 인스턴스 생성 및 메시지 파싱
+        task_instance = task_cls()
+        parsed_value = await task_instance.parse_message(remain_text, update)
+
+        if parsed_value is None:
+            # parse_message에서 이미 에러 메시지를 보냈으므로 여기서는 로깅만
+            logger.warning(f"메시지 파싱 실패: {text}")
+            return
+
+        # 큐에 Task 추가
+        await task_queue.put(QueuedTask(task_name=task_cls.TASK_NAME, value=parsed_value))
+        logger.info(f"✅ 작업 큐에 추가됨: {task_cls.TASK_NAME} - {parsed_value}")
+        await update.message.reply_text(
+            f"✅ 요청이 큐에 추가되었습니다: {parsed_value}"
+        )
+
     except Exception as e:
         logger.exception(f"메시지 처리 중 오류: {e}")
         if update.message:

@@ -31,7 +31,7 @@ class Settings:
     # Google Gemini
     GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
     TARGET_LLM_MODEL: str = os.getenv("TARGET_LLM_MODEL", "gemini")
-    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
+    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
     # GitHub
     GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")
