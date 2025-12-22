@@ -28,10 +28,9 @@ class Settings:
     WEBHOOK_DOMAIN: Optional[str] = os.getenv("WEBHOOK_DOMAIN")
     WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
 
-    # Google Gemini
-    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    TARGET_LLM_MODEL: str = os.getenv("TARGET_LLM_MODEL", "gemini")
-    GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
+    # OpenAI
+    OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4.1-mini")
+    OPENAI_MAX_INPUT_TOKENS: int = int(os.getenv("OPENAI_MAX_INPUT_TOKENS", "128000"))
 
     # GitHub
     GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")

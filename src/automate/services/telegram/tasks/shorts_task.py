@@ -20,23 +20,33 @@ class ShortsTask(BaseTask):
         return text.strip()
 
     async def execute(
-        self, value: str, application: Application, update: Update | None = None
+        self,
+        value: str,
+        application: Application,
+        chat_id: int | None = None,
+        update: Update | None = None,
     ) -> None:
         """쇼츠 작업을 실행합니다."""
         page_url = value
         try:
             logger.info(f"[WORKER] 처리 시작: {page_url}")
-            await self.send_message(application, f"쇼츠 대본생성 시작: {page_url}")
+            await self.send_message(
+                application, f"쇼츠 대본생성 시작: {page_url}", chat_id=chat_id
+            )
 
             target_url = f"{WebHook.shorts}?url={page_url}"
             res = await self._fetch_data(target_url)
 
             logger.info(f"[WORKER] 완료: {page_url}")
-            await self.send_message(application, f"✅ 쇼츠 처리 완료: {page_url}")
+            await self.send_message(
+                application, f"✅ 쇼츠 처리 완료: {page_url}", chat_id=chat_id
+            )
         except Exception as e:
             logger.exception(f"[WORKER] 오류 발생: {page_url}")
             await self.send_message(
-                application, f"❌ 처리 중 오류 발생: {page_url} - {e}"
+                application,
+                f"❌ 처리 중 오류 발생: {page_url} - {e}",
+                chat_id=chat_id,
             )
 
     async def _fetch_data(self, url: str) -> str | None:

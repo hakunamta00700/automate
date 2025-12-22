@@ -25,6 +25,7 @@ class QueuedTask:
 
     task_name: str
     value: str
+    chat_id: int
 
 
 async def worker(application: "Application") -> None:
@@ -32,8 +33,10 @@ async def worker(application: "Application") -> None:
     from .tasks import get_task_by_name
 
     while True:
+        got_task = False
         try:
             queued_task: QueuedTask = await task_queue.get()
+            got_task = True
             task_cls = get_task_by_name(queued_task.task_name)
 
             if not task_cls:
@@ -42,7 +45,9 @@ async def worker(application: "Application") -> None:
 
             # Task 인스턴스 생성 및 실행
             task_instance = task_cls()
-            await task_instance.execute(queued_task.value, application)
+            await task_instance.execute(
+                queued_task.value, application, chat_id=queued_task.chat_id
+            )
 
         except Exception as e:
             logger.exception(f"[WORKER] 작업 처리 중 오류: {e}")
@@ -50,14 +55,19 @@ async def worker(application: "Application") -> None:
                 # 에러 메시지 전송을 위한 헬퍼 함수
                 from ...core.config import get_settings
 
-                settings = get_settings()
+                if "queued_task" in locals():
+                    target_chat_id = queued_task.chat_id
+                else:
+                    settings = get_settings()
+                    target_chat_id = settings.channel_chat_id_int
                 await application.bot.send_message(
-                    chat_id=settings.channel_chat_id_int, text=f"❌ 워커 오류: {e}"
+                    chat_id=target_chat_id, text=f"❌ 워커 오류: {e}"
                 )
             except Exception:
                 pass
         finally:
-            task_queue.task_done()
+            if got_task:
+                task_queue.task_done()
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -95,7 +105,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
 
         # 큐에 Task 추가
-        await task_queue.put(QueuedTask(task_name=task_cls.TASK_NAME, value=parsed_value))
+        chat_id = update.effective_chat.id if update.effective_chat else None
+        if chat_id is None:
+            logger.warning("채팅 ID를 찾을 수 없어 메시지를 무시합니다.")
+            return
+        await task_queue.put(
+            QueuedTask(
+                task_name=task_cls.TASK_NAME, value=parsed_value, chat_id=chat_id
+            )
+        )
         logger.info(f"✅ 작업 큐에 추가됨: {task_cls.TASK_NAME} - {parsed_value}")
         await update.message.reply_text(
             f"✅ 요청이 큐에 추가되었습니다: {parsed_value}"

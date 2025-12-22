@@ -32,25 +32,35 @@ class SummaryTask(BaseTask):
         return video_id
 
     async def execute(
-        self, value: str, application: Application, update: Update | None = None
+        self,
+        value: str,
+        application: Application,
+        chat_id: int | None = None,
+        update: Update | None = None,
     ) -> None:
         """요약 작업을 실행합니다."""
         video_id = value
         try:
             logger.info(f"[WORKER] 처리 시작: {video_id}")
-            await self.send_message(application, f"요약 처리 시작: {video_id}")
+            await self.send_message(
+                application, f"요약 처리 시작: {video_id}", chat_id=chat_id
+            )
 
             # video_url = f'"https://www.youtube.com/watch?v={video_id}"'
             command = f"automate transcribe --video-id {video_id}"
-            summary = await self._run_command(command, video_id, application)
+            summary = await self._run_command(
+                command, video_id, application, chat_id=chat_id
+            )
 
             logger.info(f"[WORKER] 완료: {video_id}")
-            await self.send_message(application, f"✅ 요약 처리 완료: {video_id}")
+            await self.send_message(
+                application, f"✅ 요약 처리 완료: {video_id}", chat_id=chat_id
+            )
             
             # 요약 텍스트를 텔레그램으로 전송
             if summary:
                 # 텔레그램 메시지 길이 제한 (4096자)을 고려하여 분할 전송
-                await self._send_summary(application, summary, video_id)
+                await self._send_summary(application, summary, video_id, chat_id=chat_id)
             else:
                 logger.warning(f"요약 텍스트를 추출할 수 없습니다: {video_id}")
                 
@@ -59,10 +69,16 @@ class SummaryTask(BaseTask):
             pass
         except Exception as err:
             logger.exception(f"[WORKER] 오류 발생: {video_id} - {err}")
-            await self.send_message(application, f"❌ 처리 중 오류 발생: {video_id}")
+            await self.send_message(
+                application, f"❌ 처리 중 오류 발생: {video_id}", chat_id=chat_id
+            )
 
     async def _send_summary(
-        self, application: Application, summary: str, video_id: str
+        self,
+        application: Application,
+        summary: str,
+        video_id: str,
+        chat_id: int | None = None,
     ) -> None:
         """요약 텍스트를 텔레그램으로 전송합니다.
         
@@ -79,7 +95,7 @@ class SummaryTask(BaseTask):
         if len(summary) <= MAX_MESSAGE_LENGTH:
             # 한 번에 전송 가능한 경우
             message = f"📝 요약 내용:\n\n{summary}"
-            await self.send_message(application, message)
+            await self.send_message(application, message, chat_id=chat_id)
         else:
             # 분할 전송
             logger.info(f"요약이 길어서 분할 전송합니다: {len(summary)}자")
@@ -87,7 +103,7 @@ class SummaryTask(BaseTask):
             
             for i, part in enumerate(parts, 1):
                 message = f"📝 요약 내용 ({i}/{len(parts)}):\n\n{part}"
-                await self.send_message(application, message)
+                await self.send_message(application, message, chat_id=chat_id)
                 # 메시지 간 짧은 지연 (rate limit 방지)
                 if i < len(parts):  # 마지막 메시지가 아니면 지연
                     await asyncio.sleep(0.5)
@@ -139,7 +155,11 @@ class SummaryTask(BaseTask):
         return parts
 
     async def _run_command(
-        self, command: str, video_id: str, application: Application
+        self,
+        command: str,
+        video_id: str,
+        application: Application,
+        chat_id: int | None = None,
     ) -> str | None:
         """명령어를 실행하고 요약 텍스트를 반환합니다.
         
@@ -185,9 +205,12 @@ class SummaryTask(BaseTask):
             await self.send_message(
                 application,
                 f"❌ 처리 중 오류 발생 (리소스 소진): {video_id}\n⏳ 10분 후 자동 재시도 예약됨",
+                chat_id=chat_id,
             )
             # 10분(600초) 후에 Task를 다시 큐에 추가
-            await self._schedule_retry(video_id, application, delay_seconds=600)
+            await self._schedule_retry(
+                video_id, application, chat_id=chat_id, delay_seconds=600
+            )
             raise ResourceExhaustedError(f"429 에러 발생: {video_id}")
 
         # 반환 코드가 0이 아니면 에러로 처리
@@ -263,7 +286,11 @@ class SummaryTask(BaseTask):
             return None
 
     async def _schedule_retry(
-        self, video_id: str, application: Application, delay_seconds: int = 600
+        self,
+        video_id: str,
+        application: Application,
+        chat_id: int | None = None,
+        delay_seconds: int = 600,
     ) -> None:
         """지정된 시간 후에 Task를 다시 큐에 추가합니다.
 
@@ -277,10 +304,18 @@ class SummaryTask(BaseTask):
         async def _retry_task():
             """지정된 시간 후에 Task를 큐에 추가하는 내부 함수"""
             await asyncio.sleep(delay_seconds)
-            await task_queue.put(QueuedTask(task_name=self.TASK_NAME, value=video_id))
+            from automate.core.config import get_settings
+
+            settings = get_settings()
+            target_chat_id = chat_id if chat_id is not None else settings.channel_chat_id_int
+            await task_queue.put(
+                QueuedTask(
+                    task_name=self.TASK_NAME, value=video_id, chat_id=target_chat_id
+                )
+            )
             logger.info(f"[WORKER] 재시도 Task 큐에 추가: {video_id} (10분 후)")
             await self.send_message(
-                application, f"🔄 재시도 시작: {video_id}"
+                application, f"🔄 재시도 시작: {video_id}", chat_id=chat_id
             )
 
         # 백그라운드에서 재시도 태스크 실행

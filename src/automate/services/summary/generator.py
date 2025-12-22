@@ -2,27 +2,18 @@
 
 from typing import Dict, List
 
-import google.genai as genai
-import google.genai.types as types
+from openai import AsyncOpenAI
 from loguru import logger
 
 from ...core.config import get_settings
 from .formatter import format_transcript
 from .prompt import load_prompt
 
-# Gemini 모델의 최대 입력 토큰 수 (1,048,576 토큰)
-MAX_INPUT_TOKENS = 1_048_576
-# 안전 마진을 위해 약간 여유를 둠 (시스템 프롬프트 공간 확보)
-SAFE_TOKEN_LIMIT = MAX_INPUT_TOKENS - 10_000  # 약 10,000 토큰 여유
-
 
 def estimate_tokens(text: str) -> int:
     """텍스트의 대략적인 토큰 수를 추정합니다.
     
-    Gemini 모델의 경우:
-    - 영어: 1 토큰 ≈ 4 문자
-    - 한국어: 1 토큰 ≈ 2-3 문자 (더 복잡함)
-    보수적으로 1 토큰 ≈ 3 문자로 추정
+    보수적으로 1 토큰 ≈ 3 문자로 추정합니다.
     
     Args:
         text: 토큰 수를 추정할 텍스트
@@ -79,6 +70,7 @@ async def _summarize_chunk(
     model_name: str,
     chunk_index: int,
     total_chunks: int,
+    client: AsyncOpenAI,
 ) -> str:
     """대본 청크 하나를 요약합니다.
     
@@ -96,17 +88,16 @@ async def _summarize_chunk(
     
     # 청크 정보를 포함한 프롬프트 생성
     chunk_info = f"\n\n[참고: 이것은 전체 대본의 {chunk_index + 1}/{total_chunks} 부분입니다.]"
-    prompt = system_prompt + chunk_info + "\n\n---\n\n대본:\n" + formatted_text
-    
-    client = genai.Client()
-    response = await client.aio.models.generate_content(
+    user_prompt = chunk_info + "\n\n---\n\n대본:\n" + formatted_text
+
+    response = await client.chat.completions.create(
         model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=["TEXT"],
-        ),
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
     )
-    return response.text
+    return response.choices[0].message.content or ""
 
 
 async def summarize(
@@ -114,7 +105,7 @@ async def summarize(
     model_name: str | None = None,
 ) -> str:
     """
-    Gemini API를 사용하여 대본을 요약합니다. (비동기 실행)
+    OpenAI API를 사용하여 대본을 요약합니다. (비동기 실행)
     
     대본이 토큰 제한을 초과하는 경우 자동으로 분할하여 요약합니다.
     
@@ -127,38 +118,39 @@ async def summarize(
     """
     settings = get_settings()
     if model_name is None:
-        model_name = settings.GEMINI_MODEL_NAME
+        model_name = settings.OPENAI_MODEL_NAME
 
     logger.info(f"대본 요약 시작 (모델: {model_name})")
     system_prompt_text = load_prompt()
     formatted_text = format_transcript(transcript)
+    client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+    safe_token_limit = max(settings.OPENAI_MAX_INPUT_TOKENS - 2000, 1)
     
     # 전체 프롬프트의 토큰 수 계산
-    full_prompt = system_prompt_text + "\n\n---\n\n대본:\n" + formatted_text
-    total_tokens = estimate_tokens(full_prompt)
+    full_user_prompt = "\n\n---\n\n대본:\n" + formatted_text
+    total_tokens = estimate_tokens(system_prompt_text + full_user_prompt)
     system_prompt_tokens = estimate_tokens(system_prompt_text)
     
     # 시스템 프롬프트를 제외한 대본만의 최대 토큰 수
-    max_transcript_tokens = SAFE_TOKEN_LIMIT - system_prompt_tokens
+    max_transcript_tokens = safe_token_limit - system_prompt_tokens
     
     logger.info(f"전체 토큰 수: {total_tokens}, 시스템 프롬프트 토큰: {system_prompt_tokens}")
     
     # 토큰 제한을 초과하지 않으면 일반 요약
-    if total_tokens <= SAFE_TOKEN_LIMIT:
+    if total_tokens <= safe_token_limit:
         logger.info("토큰 제한 내 - 단일 요약 실행")
-        client = genai.Client()
-        response = await client.aio.models.generate_content(
+        response = await client.chat.completions.create(
             model=model_name,
-            contents=full_prompt,
-            config=types.GenerateContentConfig(
-                response_modalities=["TEXT"],
-            ),
+            messages=[
+                {"role": "system", "content": system_prompt_text},
+                {"role": "user", "content": full_user_prompt},
+            ],
         )
-        return response.text
+        return response.choices[0].message.content or ""
     
     # 토큰 제한 초과 - 분할 요약
     logger.warning(
-        f"토큰 제한 초과 ({total_tokens} > {SAFE_TOKEN_LIMIT}) - 대본을 분할하여 요약합니다."
+        f"토큰 제한 초과 ({total_tokens} > {safe_token_limit}) - 대본을 분할하여 요약합니다."
     )
     
     # 대본을 청크로 분할
@@ -170,7 +162,7 @@ async def summarize(
     for i, chunk in enumerate(chunks):
         logger.info(f"청크 {i + 1}/{len(chunks)} 요약 중...")
         chunk_summary = await _summarize_chunk(
-            chunk, system_prompt_text, model_name, i, len(chunks)
+            chunk, system_prompt_text, model_name, i, len(chunks), client
         )
         chunk_summaries.append(chunk_summary)
     
@@ -189,14 +181,13 @@ async def summarize(
         "위의 부분별 요약들을 바탕으로 전체 대본의 핵심 내용을 담은 통합 요약을 작성해주세요."
     )
     
-    client = genai.Client()
-    final_response = await client.aio.models.generate_content(
+    final_response = await client.chat.completions.create(
         model=model_name,
-        contents=final_prompt,
-        config=types.GenerateContentConfig(
-            response_modalities=["TEXT"],
-        ),
+        messages=[
+            {"role": "system", "content": "당신은 영상 대본 요약 전문가입니다."},
+            {"role": "user", "content": final_prompt},
+        ],
     )
     
     logger.info("최종 요약 완료")
-    return final_response.text
+    return final_response.choices[0].message.content or ""

@@ -32,7 +32,11 @@ class BaseTask(ABC):
 
     @abstractmethod
     async def execute(
-        self, value: str, application: "Application", update: Update | None = None
+        self,
+        value: str,
+        application: "Application",
+        chat_id: int | None = None,
+        update: Update | None = None,
     ) -> None:
         """
         Task를 실행합니다.
@@ -44,10 +48,13 @@ class BaseTask(ABC):
         """
         pass
 
-    async def send_message(self, application: "Application", text: str) -> None:
-        """텔레그램 채널에 메시지를 전송합니다."""
+    async def send_message(
+        self, application: "Application", text: str, chat_id: int | None = None
+    ) -> None:
+        """텔레그램 메시지를 전송합니다."""
         from automate.core.config import get_settings
 
         settings = get_settings()
-        await application.bot.send_message(chat_id=settings.channel_chat_id_int, text=text)
+        target_chat_id = chat_id if chat_id is not None else settings.channel_chat_id_int
+        await application.bot.send_message(chat_id=target_chat_id, text=text)
 
