@@ -49,6 +49,9 @@ class CustomAPISettings:
     CUSTOM_API_HOST: str = os.getenv("CUSTOM_API_HOST", "0.0.0.0")
     CUSTOM_API_PORT: int = int(os.getenv("CUSTOM_API_PORT", "8001"))
 
+    # 인증 설정
+    CUSTOM_API_KEY: str | None = os.getenv("CUSTOM_API_KEY")
+
     # 타임아웃 설정 (초)
     COMMAND_TIMEOUT: int = int(os.getenv("CUSTOM_API_TIMEOUT", "300"))
 

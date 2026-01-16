@@ -1,0 +1,41 @@
+{
+  // Ruff 설정 (최신 native server 사용)
+  "ruff.enable": true,
+  "ruff.lint.enable": true,
+  "ruff.codeAction.enable": true,
+  "ruff.organizeImports": true,
+  
+  // Ruff 설정은 pyproject.toml의 [tool.ruff] 섹션에서 관리
+  // 필요시 여기서 오버라이드 가능:
+  // "ruff.lineLength": 100,
+  // "ruff.lint.select": ["E", "W", "F", "I", "B", "C4", "UP"],
+  
+  // Python 기본 린터 비활성화 (ruff 사용)
+  "python.linting.enabled": false,
+  "python.linting.pylintEnabled": false,
+  "python.linting.flake8Enabled": false,
+  "python.linting.mypyEnabled": false,
+  
+  // 파일 감시 제외 (성능 향상)
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.cache/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/*.egg-info/**": true
+  },
+  
+  // 검색 제외
+  "search.exclude": {
+    "**/.cache": true,
+    "**/__pycache__": true,
+    "**/.pytest_cache": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/*.egg-info": true
+  }
+}

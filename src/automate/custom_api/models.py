@@ -17,7 +17,7 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     """Chat Completion 요청 모델"""
 
-    model: str = Field(..., description="사용할 모델 이름")
+    model: str | None = Field(default=None, description="사용할 모델 이름 (기본값: codex)")
     messages: list[ChatMessage] = Field(..., description="메시지 배열")
     temperature: float | None = Field(default=1.0, ge=0.0, le=2.0, description="샘플링 온도")
     max_tokens: int | None = Field(default=None, ge=1, description="최대 생성 토큰 수")
