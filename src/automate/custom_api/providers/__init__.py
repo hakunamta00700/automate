@@ -4,8 +4,8 @@ from .base import BaseProvider
 from .codex import CodexProvider
 from .cursor import CursorProvider
 from .gemini import GeminiProvider
-from .opencode import OpenCodeProvider
 from .openai import OpenAIProvider
+from .opencode import OpenCodeProvider
 
 __all__ = [
     "BaseProvider",

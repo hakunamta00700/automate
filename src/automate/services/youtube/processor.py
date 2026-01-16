@@ -1,6 +1,5 @@
 """YouTube 비디오 처리"""
 
-import asyncio
 from dataclasses import asdict, dataclass
 
 from loguru import logger

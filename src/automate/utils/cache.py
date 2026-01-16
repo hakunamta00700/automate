@@ -2,9 +2,8 @@
 
 import hashlib
 import json
-import os
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -36,7 +35,7 @@ class FileCache:
         safe_key = "".join(c for c in key if c.isalnum() or c in "._-")
         return self.youtube_cache_dir / f"{safe_key}.json"
 
-    def get(self, key: str) -> Optional[Any]:
+    def get(self, key: str) -> Any | None:
         """캐시에서 값 가져오기
 
         Args:
@@ -50,7 +49,7 @@ class FileCache:
             return None
 
         try:
-            with open(cache_path, "r", encoding="utf-8") as f:
+            with open(cache_path, encoding="utf-8") as f:
                 data = json.load(f)
                 logger.debug(f"캐시 히트: {key}")
                 return data.get("value")
@@ -124,7 +123,7 @@ class FileCache:
 
 
 # 전역 캐시 인스턴스
-_cache: Optional[FileCache] = None
+_cache: FileCache | None = None
 
 
 def get_cache() -> FileCache:

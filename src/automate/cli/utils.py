@@ -1,6 +1,5 @@
 """CLI 공통 유틸리티"""
 
-import click
 
 from ..core.config import get_settings
 

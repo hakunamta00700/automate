@@ -14,7 +14,7 @@ from loguru import logger
 from .base import BaseTask
 
 # Task 레지스트리
-_task_registry: dict[str, Type[BaseTask]] = {}
+_task_registry: dict[str, type[BaseTask]] = {}
 
 
 def _load_tasks() -> None:
@@ -35,7 +35,7 @@ def _load_tasks() -> None:
             package_name = _base_module.__package__
             module = importlib.import_module(f".{module_name}", package=package_name)
             # 모듈에서 BaseTask를 상속받은 모든 클래스 찾기
-            for name, obj in inspect.getmembers(module, inspect.isclass):
+            for _name, obj in inspect.getmembers(module, inspect.isclass):
                 if (
                     issubclass(obj, BaseTask)
                     and obj is not BaseTask
@@ -55,7 +55,7 @@ def _load_tasks() -> None:
             logger.error(f"❌ Task 모듈 로드 실패 ({module_name}): {e}")
 
 
-def get_task_by_command_prefix(command_prefix: str) -> Type[BaseTask] | None:
+def get_task_by_command_prefix(command_prefix: str) -> type[BaseTask] | None:
     """명령어 접두사로 Task 클래스를 찾습니다."""
     for task_cls in _task_registry.values():
         if task_cls.COMMAND_PREFIX == command_prefix:
@@ -63,12 +63,12 @@ def get_task_by_command_prefix(command_prefix: str) -> Type[BaseTask] | None:
     return None
 
 
-def get_task_by_name(task_name: str) -> Type[BaseTask] | None:
+def get_task_by_name(task_name: str) -> type[BaseTask] | None:
     """Task 이름으로 Task 클래스를 찾습니다."""
     return _task_registry.get(task_name)
 
 
-def get_all_tasks() -> dict[str, Type[BaseTask]]:
+def get_all_tasks() -> dict[str, type[BaseTask]]:
     """등록된 모든 Task를 반환합니다."""
     return _task_registry.copy()
 

@@ -55,7 +55,5 @@ class BaseTask(ABC):
         from automate.core.config import get_settings
 
         settings = get_settings()
-        target_chat_id = (
-            chat_id if chat_id is not None else settings.channel_chat_id_int
-        )
+        target_chat_id = chat_id if chat_id is not None else settings.channel_chat_id_int
         await application.bot.send_message(chat_id=target_chat_id, text=text)

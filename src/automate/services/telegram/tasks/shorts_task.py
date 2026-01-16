@@ -6,6 +6,7 @@ from telegram import Update
 from telegram.ext import Application
 
 from automate.core.constants import TaskKind, WebHook
+
 from .base import BaseTask
 
 
@@ -30,17 +31,13 @@ class ShortsTask(BaseTask):
         page_url = value
         try:
             logger.info(f"[WORKER] 처리 시작: {page_url}")
-            await self.send_message(
-                application, f"쇼츠 대본생성 시작: {page_url}", chat_id=chat_id
-            )
+            await self.send_message(application, f"쇼츠 대본생성 시작: {page_url}", chat_id=chat_id)
 
             target_url = f"{WebHook.shorts}?url={page_url}"
-            res = await self._fetch_data(target_url)
+            await self._fetch_data(target_url)
 
             logger.info(f"[WORKER] 완료: {page_url}")
-            await self.send_message(
-                application, f"✅ 쇼츠 처리 완료: {page_url}", chat_id=chat_id
-            )
+            await self.send_message(application, f"✅ 쇼츠 처리 완료: {page_url}", chat_id=chat_id)
         except Exception as e:
             logger.exception(f"[WORKER] 오류 발생: {page_url}")
             await self.send_message(

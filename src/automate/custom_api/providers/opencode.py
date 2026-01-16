@@ -45,8 +45,10 @@ class OpenCodeProvider(BaseProvider):
             ChatCompletionResponse
         """
         provider_name = type(self).__name__
-        logger.info(f"OpenCodeProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}")
-        
+        logger.info(
+            f"OpenCodeProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}"
+        )
+
         # 메시지를 프롬프트로 변환
         prompt = self._format_messages(messages)
 
@@ -96,9 +98,7 @@ class OpenCodeProvider(BaseProvider):
                 choices=[
                     ChatCompletionChoice(
                         index=0,
-                        message=ChatCompletionMessage(
-                            role="assistant", content=content
-                        ),
+                        message=ChatCompletionMessage(role="assistant", content=content),
                         finish_reason="stop" if content else "error",
                     )
                 ],
@@ -109,7 +109,7 @@ class OpenCodeProvider(BaseProvider):
                 ),
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error(f"OpenCode 실행 타임아웃 ({self.timeout}초)")
             raise RuntimeError(f"OpenCode 실행 타임아웃 ({self.timeout}초)")
         except Exception as e:

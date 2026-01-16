@@ -3,7 +3,6 @@
 import os
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -44,7 +43,7 @@ class CustomAPISettings:
     CURSOR_COMMAND: str = os.getenv("CURSOR_COMMAND", "cursor")
 
     # Gemini 설정
-    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+    GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
 
     # 서버 설정
     CUSTOM_API_HOST: str = os.getenv("CUSTOM_API_HOST", "0.0.0.0")
@@ -55,7 +54,7 @@ class CustomAPISettings:
 
 
 # 전역 설정 인스턴스
-_settings: Optional[CustomAPISettings] = None
+_settings: CustomAPISettings | None = None
 
 
 def get_custom_api_settings() -> CustomAPISettings:

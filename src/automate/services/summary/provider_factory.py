@@ -10,8 +10,8 @@ from ...custom_api.providers import (
     CodexProvider,
     CursorProvider,
     GeminiProvider,
-    OpenCodeProvider,
     OpenAIProvider,
+    OpenCodeProvider,
 )
 
 ProviderType = Literal["openai", "codex", "opencode", "gemini", "cursor"]
@@ -56,8 +56,10 @@ def create_provider(provider_type: str | None = None) -> BaseProvider:
             f"지원하지 않는 Provider 타입: {provider_type}. "
             f"지원 타입: openai, codex, opencode, gemini, cursor"
         )
-    
+
     provider_name = type(provider).__name__
-    logger.info(f"AI Provider 생성 완료 - Type: {provider_type}, Provider: {provider_name}, Model: {provider.model_name}")
-    
+    logger.info(
+        f"AI Provider 생성 완료 - Type: {provider_type}, Provider: {provider_name}, Model: {provider.model_name}"
+    )
+
     return provider

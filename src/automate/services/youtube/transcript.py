@@ -29,6 +29,4 @@ def get_transcript(video_id: str, language: str = "ko") -> list[dict]:
             return transcript.to_raw_data()
         except Exception as e2:
             print(f"Error getting transcript in 'en': {e2}")
-            raise Exception(
-                "Failed to get transcript in both requested language and English."
-            )
+            raise Exception("Failed to get transcript in both requested language and English.")

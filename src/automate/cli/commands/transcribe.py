@@ -2,8 +2,8 @@
 
 import click
 
-from ..utils import check_env_vars
 from ...services.youtube import extract_video_id, process_video
+from ..utils import check_env_vars
 
 
 @click.command()

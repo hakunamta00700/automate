@@ -1,7 +1,7 @@
 """OpenAI API 스타일의 요청/응답 모델"""
 
 from datetime import datetime
-from typing import Literal, Optional
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -19,13 +19,9 @@ class ChatCompletionRequest(BaseModel):
 
     model: str = Field(..., description="사용할 모델 이름")
     messages: list[ChatMessage] = Field(..., description="메시지 배열")
-    temperature: Optional[float] = Field(
-        default=1.0, ge=0.0, le=2.0, description="샘플링 온도"
-    )
-    max_tokens: Optional[int] = Field(
-        default=None, ge=1, description="최대 생성 토큰 수"
-    )
-    stream: Optional[bool] = Field(default=False, description="스트리밍 응답 여부")
+    temperature: float | None = Field(default=1.0, ge=0.0, le=2.0, description="샘플링 온도")
+    max_tokens: int | None = Field(default=None, ge=1, description="최대 생성 토큰 수")
+    stream: bool | None = Field(default=False, description="스트리밍 응답 여부")
 
 
 class ChatCompletionMessage(BaseModel):
@@ -48,9 +44,7 @@ class ChatCompletionChoice(BaseModel):
 
     index: int = Field(..., description="선택지 인덱스")
     message: ChatCompletionMessage = Field(..., description="응답 메시지")
-    finish_reason: Literal["stop", "length", "error"] = Field(
-        ..., description="완료 이유"
-    )
+    finish_reason: Literal["stop", "length", "error"] = Field(..., description="완료 이유")
 
 
 class ChatCompletionResponse(BaseModel):
@@ -64,7 +58,7 @@ class ChatCompletionResponse(BaseModel):
     )
     model: str = Field(..., description="사용된 모델 이름")
     choices: list[ChatCompletionChoice] = Field(..., description="응답 선택지")
-    usage: Optional[Usage] = Field(default=None, description="토큰 사용량")
+    usage: Usage | None = Field(default=None, description="토큰 사용량")
 
 
 class ModelInfo(BaseModel):

@@ -1,6 +1,5 @@
 """텔레그램 관련 명령어"""
 
-import asyncio
 
 import click
 
@@ -28,12 +27,10 @@ def send_telegram(message: str) -> None:
     """
     settings = get_settings()
     if not settings.BOT_TOKEN:
-        raise click.ClickException(
-            "BOT_TOKEN is not set in environment variables or .env file."
-        )
+        raise click.ClickException("BOT_TOKEN is not set in environment variables or .env file.")
 
     try:
         send_to_channel_sync(message)
-        click.echo(f"✅ Message sent to channel")
+        click.echo("✅ Message sent to channel")
     except Exception as e:
         raise click.ClickException(f"Failed to send message: {e}")

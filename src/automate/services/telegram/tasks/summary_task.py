@@ -8,6 +8,7 @@ from telegram.ext import Application
 
 from automate.core.constants import TaskKind
 from automate.utils.youtube_utils import extract_video_id
+
 from .base import BaseTask
 
 
@@ -42,27 +43,19 @@ class SummaryTask(BaseTask):
         video_id = value
         try:
             logger.info(f"[WORKER] 처리 시작: {video_id}")
-            await self.send_message(
-                application, f"요약 처리 시작: {video_id}", chat_id=chat_id
-            )
+            await self.send_message(application, f"요약 처리 시작: {video_id}", chat_id=chat_id)
 
             # video_url = f'"https://www.youtube.com/watch?v={video_id}"'
             command = f"automate transcribe --video-id {video_id}"
-            summary = await self._run_command(
-                command, video_id, application, chat_id=chat_id
-            )
+            summary = await self._run_command(command, video_id, application, chat_id=chat_id)
 
             logger.info(f"[WORKER] 완료: {video_id}")
-            await self.send_message(
-                application, f"✅ 요약 처리 완료: {video_id}", chat_id=chat_id
-            )
+            await self.send_message(application, f"✅ 요약 처리 완료: {video_id}", chat_id=chat_id)
 
             # 요약 텍스트를 텔레그램으로 전송
             if summary:
                 # 텔레그램 메시지 길이 제한 (4096자)을 고려하여 분할 전송
-                await self._send_summary(
-                    application, summary, video_id, chat_id=chat_id
-                )
+                await self._send_summary(application, summary, video_id, chat_id=chat_id)
             else:
                 logger.warning(f"요약 텍스트를 추출할 수 없습니다: {video_id}")
 
@@ -210,9 +203,7 @@ class SummaryTask(BaseTask):
                 chat_id=chat_id,
             )
             # 10분(600초) 후에 Task를 다시 큐에 추가
-            await self._schedule_retry(
-                video_id, application, chat_id=chat_id, delay_seconds=600
-            )
+            await self._schedule_retry(video_id, application, chat_id=chat_id, delay_seconds=600)
             raise ResourceExhaustedError(f"429 에러 발생: {video_id}")
 
         # 반환 코드가 0이 아니면 에러로 처리
@@ -309,18 +300,12 @@ class SummaryTask(BaseTask):
             from automate.core.config import get_settings
 
             settings = get_settings()
-            target_chat_id = (
-                chat_id if chat_id is not None else settings.channel_chat_id_int
-            )
+            target_chat_id = chat_id if chat_id is not None else settings.channel_chat_id_int
             await task_queue.put(
-                QueuedTask(
-                    task_name=self.TASK_NAME, value=video_id, chat_id=target_chat_id
-                )
+                QueuedTask(task_name=self.TASK_NAME, value=video_id, chat_id=target_chat_id)
             )
             logger.info(f"[WORKER] 재시도 Task 큐에 추가: {video_id} (10분 후)")
-            await self.send_message(
-                application, f"🔄 재시도 시작: {video_id}", chat_id=chat_id
-            )
+            await self.send_message(application, f"🔄 재시도 시작: {video_id}", chat_id=chat_id)
 
         # 백그라운드에서 재시도 태스크 실행
         asyncio.create_task(_retry_task())

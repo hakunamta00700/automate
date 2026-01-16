@@ -1,9 +1,6 @@
 """Airtable 클라이언트 관리"""
 
-import asyncio
 from pyairtable import Api, Base, Table
-
-from ...core.config import get_settings
 
 
 def get_base_from_aritable(api: Api, base_name: str) -> Base:

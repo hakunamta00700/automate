@@ -1,7 +1,7 @@
 """AI Provider 추상 베이스 클래스"""
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from ..models import ChatCompletionResponse, ChatMessage
 

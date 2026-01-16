@@ -1,7 +1,6 @@
 """설정 관리 모듈"""
 
 import os
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -13,19 +12,19 @@ class Settings:
     """애플리케이션 설정"""
 
     # OpenAI
-    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
 
     # Airtable
-    AIRTABLE_API_KEY: Optional[str] = os.getenv("AIRTABLE_API_KEY")
-    AIRTABLE_BASE_NAME: Optional[str] = os.getenv("AIRTABLE_BASE_NAME")
-    AIRTABLE_TABLE_NAME: Optional[str] = os.getenv("AIRTABLE_TABLE_NAME")
+    AIRTABLE_API_KEY: str | None = os.getenv("AIRTABLE_API_KEY")
+    AIRTABLE_BASE_NAME: str | None = os.getenv("AIRTABLE_BASE_NAME")
+    AIRTABLE_TABLE_NAME: str | None = os.getenv("AIRTABLE_TABLE_NAME")
 
     # Telegram
-    BOT_TOKEN: Optional[str] = os.getenv("BOT_TOKEN")
-    CHANNEL_CHAT_ID: Optional[str] = os.getenv("CHANNEL_CHAT_ID", "431464720")
+    BOT_TOKEN: str | None = os.getenv("BOT_TOKEN")
+    CHANNEL_CHAT_ID: str | None = os.getenv("CHANNEL_CHAT_ID", "431464720")
 
     # Webhook
-    WEBHOOK_DOMAIN: Optional[str] = os.getenv("WEBHOOK_DOMAIN")
+    WEBHOOK_DOMAIN: str | None = os.getenv("WEBHOOK_DOMAIN")
     WEBHOOK_PATH: str = os.getenv("WEBHOOK_PATH", "/webhook")
 
     # OpenAI
@@ -36,15 +35,15 @@ class Settings:
     AI_PROVIDER: str = os.getenv("AI_PROVIDER", "codex")
 
     # GitHub
-    GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")
-    GITHUB_OWNER: Optional[str] = os.getenv("GITHUB_OWNER")
-    GITHUB_REPO: Optional[str] = os.getenv("GITHUB_REPO")
+    GITHUB_TOKEN: str | None = os.getenv("GITHUB_TOKEN")
+    GITHUB_OWNER: str | None = os.getenv("GITHUB_OWNER")
+    GITHUB_REPO: str | None = os.getenv("GITHUB_REPO")
 
     # Custom API
     CODEX_COMMAND: str = os.getenv("CODEX_COMMAND", "codex")
     OPENCODE_COMMAND: str = os.getenv("OPENCODE_COMMAND", "opencode")
     CURSOR_COMMAND: str = os.getenv("CURSOR_COMMAND", "cursor")
-    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+    GEMINI_API_KEY: str | None = os.getenv("GEMINI_API_KEY")
     CUSTOM_API_HOST: str = os.getenv("CUSTOM_API_HOST", "0.0.0.0")
     CUSTOM_API_PORT: int = int(os.getenv("CUSTOM_API_PORT", "8001"))
     CUSTOM_API_TIMEOUT: int = int(os.getenv("CUSTOM_API_TIMEOUT", "300"))
@@ -91,7 +90,7 @@ class Settings:
 
 
 # 전역 설정 인스턴스
-_settings: Optional[Settings] = None
+_settings: Settings | None = None
 
 
 def get_settings() -> Settings:

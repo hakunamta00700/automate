@@ -56,13 +56,13 @@ class OpenAIProvider(BaseProvider):
             ChatCompletionResponse
         """
         provider_name = type(self).__name__
-        logger.info(f"OpenAIProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}")
-        
+        logger.info(
+            f"OpenAIProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}"
+        )
+
         try:
             # ChatMessage를 OpenAI 형식으로 변환
-            openai_messages = [
-                {"role": msg.role, "content": msg.content} for msg in messages
-            ]
+            openai_messages = [{"role": msg.role, "content": msg.content} for msg in messages]
 
             # OpenAI API 호출
             response = await self.client.chat.completions.create(
@@ -82,17 +82,13 @@ class OpenAIProvider(BaseProvider):
                 choices=[
                     ChatCompletionChoice(
                         index=choice.index,
-                        message=ChatCompletionMessage(
-                            role="assistant", content=content
-                        ),
+                        message=ChatCompletionMessage(role="assistant", content=content),
                         finish_reason=choice.finish_reason or "stop",
                     )
                 ],
                 usage=Usage(
                     prompt_tokens=response.usage.prompt_tokens if response.usage else 0,
-                    completion_tokens=response.usage.completion_tokens
-                    if response.usage
-                    else 0,
+                    completion_tokens=response.usage.completion_tokens if response.usage else 0,
                     total_tokens=response.usage.total_tokens if response.usage else 0,
                 )
                 if response.usage

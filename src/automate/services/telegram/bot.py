@@ -45,9 +45,7 @@ async def worker(application: "Application") -> None:
 
             # Task 인스턴스 생성 및 실행
             task_instance = task_cls()
-            await task_instance.execute(
-                queued_task.value, application, chat_id=queued_task.chat_id
-            )
+            await task_instance.execute(queued_task.value, application, chat_id=queued_task.chat_id)
 
         except Exception as e:
             logger.exception(f"[WORKER] 작업 처리 중 오류: {e}")
@@ -110,21 +108,15 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             logger.warning("채팅 ID를 찾을 수 없어 메시지를 무시합니다.")
             return
         await task_queue.put(
-            QueuedTask(
-                task_name=task_cls.TASK_NAME, value=parsed_value, chat_id=chat_id
-            )
+            QueuedTask(task_name=task_cls.TASK_NAME, value=parsed_value, chat_id=chat_id)
         )
         logger.info(f"✅ 작업 큐에 추가됨: {task_cls.TASK_NAME} - {parsed_value}")
-        await update.message.reply_text(
-            f"✅ 요청이 큐에 추가되었습니다: {parsed_value}"
-        )
+        await update.message.reply_text(f"✅ 요청이 큐에 추가되었습니다: {parsed_value}")
 
     except Exception as e:
         logger.exception(f"메시지 처리 중 오류: {e}")
         if update.message:
-            await update.message.reply_text(
-                f"❌ 메시지 처리 중 오류가 발생했습니다: {e}"
-            )
+            await update.message.reply_text(f"❌ 메시지 처리 중 오류가 발생했습니다: {e}")
 
 
 def main() -> None:
