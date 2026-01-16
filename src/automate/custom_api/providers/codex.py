@@ -2,6 +2,7 @@
 
 import asyncio
 import shlex
+from typing import List
 
 from loguru import logger
 
@@ -25,6 +26,7 @@ class CodexProvider(BaseProvider):
         super().__init__(model_name="codex")
         self.command = settings.CODEX_COMMAND
         self.timeout = settings.COMMAND_TIMEOUT
+
 
     async def chat_completion(
         self,
