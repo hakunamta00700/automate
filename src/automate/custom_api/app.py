@@ -1,11 +1,13 @@
 """Custom API FastAPI 애플리케이션"""
 
+import time
+from collections.abc import Callable
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from loguru import logger
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from .config import get_custom_api_settings
 from .models import (
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -50,6 +52,55 @@ def get_provider(model: str) -> BaseProvider:
     return provider
 
 
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """요청/응답 로깅을 위한 Middleware"""
+
+    async def dispatch(self, request: Request, call_next: Callable):
+        """요청과 응답을 로깅합니다."""
+        start_time = time.time()
+
+        # 요청 정보 로깅
+        method = request.method
+        path = request.url.path
+        client_ip = request.client.host if request.client else "unknown"
+        logger.info(f"요청 수신: {method} {path} (IP: {client_ip})")
+
+        # 요청 본문 로깅 (POST 요청만, 일부 경로 제외)
+        if method == "POST" and path not in ["/health"]:
+            try:
+                body = await request.body()
+                if body:
+                    # 본문이 너무 길면 잘라서 로깅
+                    body_str = body.decode("utf-8", errors="ignore")
+                    if len(body_str) > 500:
+                        logger.debug(f"요청 본문 (일부): {body_str[:500]}...")
+                    else:
+                        logger.debug(f"요청 본문: {body_str}")
+            except Exception as e:
+                logger.warning(f"요청 본문 읽기 실패: {e}")
+
+        # 응답 처리
+        try:
+            response = await call_next(request)
+            process_time = time.time() - start_time
+            status_code = response.status_code
+
+            # 응답 로깅
+            logger.info(
+                f"응답 전송: {method} {path} - 상태 코드: {status_code}, "
+                f"처리 시간: {process_time:.3f}초"
+            )
+
+            return response
+        except Exception as e:
+            process_time = time.time() - start_time
+            logger.exception(
+                f"요청 처리 중 오류 발생: {method} {path} - "
+                f"처리 시간: {process_time:.3f}초, 오류: {e}"
+            )
+            raise
+
+
 def create_app() -> FastAPI:
     """Custom API FastAPI 애플리케이션 생성
 
@@ -62,6 +113,11 @@ def create_app() -> FastAPI:
         version="1.0.0",
     )
 
+    # 로깅 middleware 추가
+    app.add_middleware(LoggingMiddleware)
+
+    logger.info("FastAPI 애플리케이션 생성 완료")
+
     # 사용 가능한 모델 목록
     AVAILABLE_MODELS = [
         ModelInfo(id="codex", owned_by="custom"),
@@ -73,12 +129,16 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         """헬스 체크 엔드포인트"""
+        logger.debug("헬스 체크 요청")
         return {"status": "healthy"}
 
     @app.get("/v1/models", response_model=ModelsListResponse)
     async def list_models():
         """사용 가능한 모델 목록 반환"""
-        return ModelsListResponse(data=AVAILABLE_MODELS)
+        logger.info("모델 목록 요청")
+        models = ModelsListResponse(data=AVAILABLE_MODELS)
+        logger.debug(f"사용 가능한 모델 수: {len(models.data)}")
+        return models
 
     @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
     async def chat_completions(request: ChatCompletionRequest):
@@ -89,20 +149,32 @@ def create_app() -> FastAPI:
         try:
             provider = get_provider(request.model)
             provider_name = type(provider).__name__
-            logger.info(f"Chat completion 처리 시작 - Provider: {provider_name}, Model: {request.model}")
+            message_count = len(request.messages)
+            logger.info(
+                f"Chat completion 처리 시작 - Provider: {provider_name}, "
+                f"Model: {request.model}, Messages: {message_count}, "
+                f"Temperature: {request.temperature}, MaxTokens: {request.max_tokens}"
+            )
+            start_time = time.time()
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
-            logger.info(f"Chat completion 처리 완료 - Provider: {provider_name}")
+            process_time = time.time() - start_time
+            response_length = len(response.choices[0].message.content) if response.choices else 0
+            logger.info(
+                f"Chat completion 처리 완료 - Provider: {provider_name}, "
+                f"처리 시간: {process_time:.3f}초, "
+                f"응답 길이: {response_length}자"
+            )
             return response
         except RuntimeError as e:
             logger.error(f"Chat completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     @app.post("/v1/chat/completions/stream")
     async def chat_completions_stream(request: ChatCompletionRequest):
@@ -110,7 +182,10 @@ def create_app() -> FastAPI:
         try:
             provider = get_provider(request.model)
             provider_name = type(provider).__name__
-            logger.info(f"Streaming chat completion 처리 시작 - Provider: {provider_name}, Model: {request.model}")
+            logger.info(
+                f"Streaming chat completion 처리 시작 - "
+                f"Provider: {provider_name}, Model: {request.model}"
+            )
 
             async def generate():
                 async for chunk in provider.stream_chat_completion(
@@ -126,10 +201,10 @@ def create_app() -> FastAPI:
             return StreamingResponse(generate(), media_type="text/event-stream")
         except RuntimeError as e:
             logger.error(f"Streaming chat completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     @app.post("/v1/codex/completions", response_model=ChatCompletionResponse)
     async def codex_completions(request: ChatCompletionRequest):
@@ -146,10 +221,10 @@ def create_app() -> FastAPI:
             return response
         except RuntimeError as e:
             logger.error(f"Codex completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     @app.post("/v1/opencode/completions", response_model=ChatCompletionResponse)
     async def opencode_completions(request: ChatCompletionRequest):
@@ -166,10 +241,10 @@ def create_app() -> FastAPI:
             return response
         except RuntimeError as e:
             logger.error(f"OpenCode completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     @app.post("/v1/gemini/completions", response_model=ChatCompletionResponse)
     async def gemini_completions(request: ChatCompletionRequest):
@@ -186,10 +261,10 @@ def create_app() -> FastAPI:
             return response
         except RuntimeError as e:
             logger.error(f"Gemini completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     @app.post("/v1/cursor/completions", response_model=ChatCompletionResponse)
     async def cursor_completions(request: ChatCompletionRequest):
@@ -206,9 +281,9 @@ def create_app() -> FastAPI:
             return response
         except RuntimeError as e:
             logger.error(f"Cursor completion 오류: {e}")
-            raise HTTPException(status_code=500, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e)) from e
         except Exception as e:
             logger.exception(f"예상치 못한 오류: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail="Internal server error") from e
 
     return app
