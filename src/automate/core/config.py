@@ -33,7 +33,7 @@ class Settings:
     OPENAI_MAX_INPUT_TOKENS: int = int(os.getenv("OPENAI_MAX_INPUT_TOKENS", "128000"))
 
     # AI Provider 설정
-    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "codex")
 
     # GitHub
     GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")

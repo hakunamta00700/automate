@@ -34,8 +34,8 @@ def create_provider(provider_type: str | None = None) -> BaseProvider:
 
     # Provider 타입 결정 (설정 또는 인자)
     if provider_type is None:
-        # 환경 변수에서 Provider 타입 가져오기 (기본값: openai)
-        provider_type = getattr(settings, "AI_PROVIDER", "openai")
+        # 환경 변수에서 Provider 타입 가져오기 (기본값: codex)
+        provider_type = getattr(settings, "AI_PROVIDER", "codex")
 
     provider_type = provider_type.lower()
 
