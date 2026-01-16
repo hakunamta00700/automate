@@ -56,14 +56,16 @@ class SummaryTask(BaseTask):
             await self.send_message(
                 application, f"✅ 요약 처리 완료: {video_id}", chat_id=chat_id
             )
-            
+
             # 요약 텍스트를 텔레그램으로 전송
             if summary:
                 # 텔레그램 메시지 길이 제한 (4096자)을 고려하여 분할 전송
-                await self._send_summary(application, summary, video_id, chat_id=chat_id)
+                await self._send_summary(
+                    application, summary, video_id, chat_id=chat_id
+                )
             else:
                 logger.warning(f"요약 텍스트를 추출할 수 없습니다: {video_id}")
-                
+
         except ResourceExhaustedError:
             # 429 에러 (Resource Exhausted) 처리 - 이미 _run_command에서 처리됨
             pass
@@ -81,9 +83,9 @@ class SummaryTask(BaseTask):
         chat_id: int | None = None,
     ) -> None:
         """요약 텍스트를 텔레그램으로 전송합니다.
-        
+
         텔레그램 메시지 길이 제한(4096자)을 고려하여 필요시 분할 전송합니다.
-        
+
         Args:
             application: Telegram Application 객체
             summary: 전송할 요약 텍스트
@@ -91,7 +93,7 @@ class SummaryTask(BaseTask):
         """
         # 텔레그램 메시지 최대 길이 (안전 마진 포함)
         MAX_MESSAGE_LENGTH = 4000
-        
+
         if len(summary) <= MAX_MESSAGE_LENGTH:
             # 한 번에 전송 가능한 경우
             message = f"📝 요약 내용:\n\n{summary}"
@@ -100,7 +102,7 @@ class SummaryTask(BaseTask):
             # 분할 전송
             logger.info(f"요약이 길어서 분할 전송합니다: {len(summary)}자")
             parts = self._split_text(summary, MAX_MESSAGE_LENGTH)
-            
+
             for i, part in enumerate(parts, 1):
                 message = f"📝 요약 내용 ({i}/{len(parts)}):\n\n{part}"
                 await self.send_message(application, message, chat_id=chat_id)
@@ -110,29 +112,29 @@ class SummaryTask(BaseTask):
 
     def _split_text(self, text: str, max_length: int) -> list[str]:
         """텍스트를 지정된 길이로 분할합니다.
-        
+
         문장 단위로 분할하여 자연스럽게 나눕니다.
-        
+
         Args:
             text: 분할할 텍스트
             max_length: 각 부분의 최대 길이
-            
+
         Returns:
             분할된 텍스트 리스트
         """
         if len(text) <= max_length:
             return [text]
-        
+
         parts: list[str] = []
         current_part = ""
-        
+
         # 문장 단위로 분할 (줄바꿈 또는 마침표 기준)
         sentences = text.split("\n\n")  # 단락 단위로 먼저 분할
-        
+
         for sentence in sentences:
             # 현재 부분에 문장을 추가했을 때 길이 확인
             test_part = current_part + ("\n\n" if current_part else "") + sentence
-            
+
             if len(test_part) <= max_length:
                 current_part = test_part
             else:
@@ -140,18 +142,18 @@ class SummaryTask(BaseTask):
                 if current_part:
                     parts.append(current_part)
                 current_part = sentence
-                
+
                 # 문장 자체가 너무 긴 경우 강제로 분할
                 if len(current_part) > max_length:
                     # 문장을 강제로 분할
                     while len(current_part) > max_length:
                         parts.append(current_part[:max_length])
                         current_part = current_part[max_length:]
-        
+
         # 마지막 부분 추가
         if current_part:
             parts.append(current_part)
-        
+
         return parts
 
     async def _run_command(
@@ -162,15 +164,15 @@ class SummaryTask(BaseTask):
         chat_id: int | None = None,
     ) -> str | None:
         """명령어를 실행하고 요약 텍스트를 반환합니다.
-        
+
         Args:
             command: 실행할 명령어
             video_id: YouTube 비디오 ID (에러 처리용)
             application: Telegram Application 객체 (에러 처리용)
-        
+
         Returns:
             추출된 요약 텍스트 또는 None (요약을 찾을 수 없는 경우)
-        
+
         Raises:
             ResourceExhaustedError: 429 에러가 발생한 경우
             RuntimeError: 명령어 실행이 실패한 경우 (반환 코드가 0이 아님)
@@ -182,7 +184,7 @@ class SummaryTask(BaseTask):
         )
 
         stdout, stderr = await process.communicate()
-        
+
         stdout_text = stdout.decode() if stdout else ""
         stderr_text = stderr.decode() if stderr else ""
 
@@ -226,21 +228,21 @@ class SummaryTask(BaseTask):
 
     def _extract_summary_from_output(self, output: str) -> str | None:
         """명령어 출력에서 요약 텍스트를 추출합니다.
-        
+
         Args:
             output: 명령어의 stdout 출력
-            
+
         Returns:
             추출된 요약 텍스트 또는 None
         """
         if not output:
             return None
-        
+
         # "📝 요약 내용:" 다음의 "=" * 50 사이의 내용 추출
         lines = output.split("\n")
         summary_start_marker = "📝 요약 내용:"
         separator = "=" * 50
-        
+
         try:
             # 요약 시작 마커 찾기
             start_idx = None
@@ -248,39 +250,39 @@ class SummaryTask(BaseTask):
                 if summary_start_marker in line:
                     start_idx = i + 1
                     break
-            
+
             if start_idx is None:
                 logger.warning("요약 시작 마커를 찾을 수 없습니다.")
                 return None
-            
+
             # 첫 번째 구분선 찾기
             first_separator_idx = None
             for i in range(start_idx, len(lines)):
                 if lines[i].strip() == separator:
                     first_separator_idx = i
                     break
-            
+
             if first_separator_idx is None:
                 logger.warning("첫 번째 구분선을 찾을 수 없습니다.")
                 return None
-            
+
             # 두 번째 구분선 찾기
             second_separator_idx = None
             for i in range(first_separator_idx + 1, len(lines)):
                 if lines[i].strip() == separator:
                     second_separator_idx = i
                     break
-            
+
             if second_separator_idx is None:
                 logger.warning("두 번째 구분선을 찾을 수 없습니다.")
                 # 구분선이 하나만 있어도 요약 추출 시도
                 summary_lines = lines[first_separator_idx + 1 :]
             else:
                 summary_lines = lines[first_separator_idx + 1 : second_separator_idx]
-            
+
             summary = "\n".join(summary_lines).strip()
             return summary if summary else None
-            
+
         except Exception as e:
             logger.warning(f"요약 추출 중 오류 발생: {e}")
             return None
@@ -307,7 +309,9 @@ class SummaryTask(BaseTask):
             from automate.core.config import get_settings
 
             settings = get_settings()
-            target_chat_id = chat_id if chat_id is not None else settings.channel_chat_id_int
+            target_chat_id = (
+                chat_id if chat_id is not None else settings.channel_chat_id_int
+            )
             await task_queue.put(
                 QueuedTask(
                     task_name=self.TASK_NAME, value=video_id, chat_id=target_chat_id
@@ -320,4 +324,3 @@ class SummaryTask(BaseTask):
 
         # 백그라운드에서 재시도 태스크 실행
         asyncio.create_task(_retry_task())
-

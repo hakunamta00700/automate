@@ -32,10 +32,22 @@ class Settings:
     OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4.1-mini")
     OPENAI_MAX_INPUT_TOKENS: int = int(os.getenv("OPENAI_MAX_INPUT_TOKENS", "128000"))
 
+    # AI Provider 설정
+    AI_PROVIDER: str = os.getenv("AI_PROVIDER", "openai")
+
     # GitHub
     GITHUB_TOKEN: Optional[str] = os.getenv("GITHUB_TOKEN")
     GITHUB_OWNER: Optional[str] = os.getenv("GITHUB_OWNER")
     GITHUB_REPO: Optional[str] = os.getenv("GITHUB_REPO")
+
+    # Custom API
+    CODEX_COMMAND: str = os.getenv("CODEX_COMMAND", "codex")
+    OPENCODE_COMMAND: str = os.getenv("OPENCODE_COMMAND", "opencode")
+    CURSOR_COMMAND: str = os.getenv("CURSOR_COMMAND", "cursor")
+    GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")
+    CUSTOM_API_HOST: str = os.getenv("CUSTOM_API_HOST", "0.0.0.0")
+    CUSTOM_API_PORT: int = int(os.getenv("CUSTOM_API_PORT", "8001"))
+    CUSTOM_API_TIMEOUT: int = int(os.getenv("CUSTOM_API_TIMEOUT", "300"))
 
     @property
     def webhook_url(self) -> str:

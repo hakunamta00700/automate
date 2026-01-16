@@ -58,4 +58,3 @@ class ShortsTask(BaseTask):
                 else:
                     print(f"Error: {response.status} - {response.reason}")
                     return None
-

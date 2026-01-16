@@ -2,6 +2,7 @@
 
 import click
 
+from .commands.custom_api import custom_api
 from .commands.dispatch import dispatch
 from .commands.serve import serve_command
 from .commands.telegram import send_telegram, telegram_bot
@@ -26,6 +27,7 @@ cli.add_command(serve_command, name="serve")
 cli.add_command(telegram_bot, name="telegram-bot")
 cli.add_command(dispatch)
 cli.add_command(send_telegram, name="send-telegram")
+cli.add_command(custom_api, name="custom-api")
 
 
 __all__ = ["cli"]

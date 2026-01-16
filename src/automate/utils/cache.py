@@ -137,4 +137,3 @@ def get_cache() -> FileCache:
     if _cache is None:
         _cache = FileCache()
     return _cache
-

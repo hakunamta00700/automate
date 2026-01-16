@@ -75,4 +75,3 @@ def get_all_tasks() -> Dict[str, Type[BaseTask]]:
 
 # 모듈 로드 시 자동으로 Task 로드
 _load_tasks()
-
