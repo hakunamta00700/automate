@@ -5,11 +5,12 @@ YouTube 영상 대본 추출, 요약, 저장 및 텔레그램 봇 기능을 제�
 ## 주요 기능
 
 - 🎬 **YouTube 대본 추출**: YouTube 영상의 자막을 다양한 언어로 추출
-- 📝 **AI 요약**: Gemini API를 사용한 영상 대본 요약
+- 📝 **AI 요약**: OpenAI API를 사용한 영상 대본 요약
 - 💾 **Airtable 저장**: 요약된 내용을 Airtable에 자동 저장
 - 🤖 **텔레그램 봇**: 텔레그램을 통한 YouTube 영상 요약 및 쇼츠 처리
 - 🚀 **FastAPI 서버**: 웹훅을 통한 텔레그램 봇 서비스
 - 🔄 **GitHub Workflow 연동**: GitHub Actions를 통한 원격 작업 처리
+- 🔌 **Custom API**: Codex, OpenCode, Gemini, Cursor CLI 등을 OpenAI API 스타일로 제공
 
 ## 요구사항
 
@@ -42,7 +43,7 @@ uv pip install -e ".[dev]"
 ### 필수 환경 변수
 
 ```env
-# OpenAI API (필요한 경우)
+# OpenAI API (요약 기능 사용 시)
 OPENAI_API_KEY=your_openai_api_key
 
 # Airtable 설정
@@ -62,16 +63,25 @@ WEBHOOK_PATH=/webhook
 ### 선택적 환경 변수
 
 ```env
-# Google Gemini API (요약 기능 사용 시)
-GOOGLE_API_KEY=your_google_api_key
+# OpenAI 모델 설정 (기본값: "gpt-4.1-mini")
+OPENAI_MODEL_NAME=gpt-4.1-mini
 
-# LLM 모델 선택 (기본값: "gemini")
-TARGET_LLM_MODEL=gemini
+# OpenAI 입력 토큰 한도 (기본값: 128000)
+OPENAI_MAX_INPUT_TOKENS=128000
 
 # GitHub Workflow (dispatch 기능 사용 시)
 GITHUB_TOKEN=your_github_token
 GITHUB_OWNER=your_github_username
 GITHUB_REPO=your_repository_name
+
+# Custom API 설정 (선택)
+CODEX_COMMAND=codex
+OPENCODE_COMMAND=opencode
+CURSOR_COMMAND=cursor
+GEMINI_API_KEY=your_gemini_api_key
+CUSTOM_API_HOST=0.0.0.0
+CUSTOM_API_PORT=8001
+CUSTOM_API_TIMEOUT=300
 ```
 
 ## 사용법
@@ -155,7 +165,54 @@ automate send-telegram "메시지 내용"
 
 설정된 텔레그램 채널에 메시지를 전송합니다.
 
-#### 8. 대본 추출 스크립트 (직접 실행)
+#### 8. Custom API 서버 실행
+
+```bash
+# 개발 환경 (기본값)
+automate custom-api dev
+
+# 운영 환경
+automate custom-api prod
+```
+
+OpenAI API 스타일의 인터페이스로 로컬 AI 도구들(Codex, OpenCode, Gemini, Cursor CLI)에 접근할 수 있는 API 서버를 실행합니다.
+
+**환경별 차이:**
+- `dev`: 디버그 모드, 자세한 로깅, 자동 리로드
+- `prod`: 최적화된 성능, 멀티프로세스 워커
+
+**API 엔드포인트:**
+- `POST /v1/chat/completions`: 통합 엔드포인트 (model 파라미터로 선택)
+- `POST /v1/codex/completions`: Codex 전용
+- `POST /v1/opencode/completions`: OpenCode 전용
+- `POST /v1/gemini/completions`: Gemini 전용
+- `POST /v1/cursor/completions`: Cursor CLI 전용
+- `GET /v1/models`: 사용 가능한 모델 목록
+- `GET /health`: 헬스 체크
+
+**사용 예시:**
+```bash
+# 통합 엔드포인트 사용
+curl -X POST http://localhost:8001/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "codex",
+    "messages": [
+      {"role": "user", "content": "Hello, world!"}
+    ]
+  }'
+
+# Codex 전용 엔드포인트 사용
+curl -X POST http://localhost:8001/v1/codex/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "user", "content": "Hello, world!"}
+    ]
+  }'
+```
+
+#### 9. 대본 추출 스크립트 (직접 실행)
 
 ```bash
 python -m automate.scripts.get_transcript "https://www.youtube.com/watch?v=VIDEO_ID"
@@ -188,7 +245,7 @@ asyncio.run(main())
   - `get_transcript`: 대본 추출
   - `get_youtube_metadata`: 비디오 메타데이터 추출
   - `process_video`: 전체 처리 (대본 추출, 요약, 저장)
-- `automate.services.summary`: AI 요약 기능 (Gemini API)
+- `automate.services.summary`: AI 요약 기능 (OpenAI API)
   - `summarize`: 대본 요약 생성
   - `format_transcript`: 대본 포맷팅
 - `automate.services.airtable`: Airtable 연동
@@ -204,6 +261,10 @@ asyncio.run(main())
 - `automate.core`: 설정 및 상수
   - `Settings`: 환경 변수 설정 관리
   - `get_settings`: 설정 인스턴스 반환
+- `automate.custom_api`: Custom API 서버
+  - `create_app`: FastAPI 애플리케이션 생성
+  - `providers`: AI 도구별 Provider 구현 (Codex, OpenCode, Gemini, Cursor)
+  - OpenAI API 스타일의 인터페이스 제공
 
 ## 프로젝트 구조
 
@@ -220,7 +281,8 @@ automate/
 │       │       ├── transcribe.py     # 전사 명령어
 │       │       ├── telegram.py       # 텔레그램 명령어
 │       │       ├── dispatch.py       # GitHub workflow dispatch
-│       │       └── serve.py          # 서버 실행
+│       │       ├── serve.py          # 서버 실행
+│       │       └── custom_api.py     # Custom API 서버 실행
 │       ├── core/                      # 설정 및 상수
 │       │   ├── __init__.py
 │       │   ├── config.py              # 환경 변수 통합 관리
@@ -242,6 +304,16 @@ automate/
 │       │       ├── bot.py             # 풀링 봇
 │       │       ├── sender.py          # 메시지 전송
 │       │       └── webhook.py         # FastAPI 웹훅
+│       ├── custom_api/                # Custom API 서버
+│       │   ├── app.py                 # FastAPI 애플리케이션
+│       │   ├── models.py              # 요청/응답 모델
+│       │   ├── config.py              # 설정 관리
+│       │   └── providers/             # AI Provider 구현
+│       │       ├── base.py            # 추상 베이스 클래스
+│       │       ├── codex.py          # Codex Provider
+│       │       ├── opencode.py       # OpenCode Provider
+│       │       ├── gemini.py         # Gemini Provider
+│       │       └── cursor.py         # Cursor Provider
 │       ├── utils/                     # 공통 유틸리티
 │       │   ├── __init__.py
 │       │   ├── async_utils.py         # 비동기 유틸리티
@@ -263,6 +335,7 @@ automate/
 - `dispatch`: `GITHUB_TOKEN`, `GITHUB_OWNER`, `GITHUB_REPO` 필요
 - `send-telegram`: `BOT_TOKEN` 필요
 - `serve`: `BOT_TOKEN`, `WEBHOOK_DOMAIN`, `WEBHOOK_PATH` 필요
+- `custom-api`: 각 AI 도구의 CLI 명령어가 PATH에 있어야 함 (선택적으로 `GEMINI_API_KEY` 설정)
 
 ### 비동기 함수 사용
 
