@@ -1,7 +1,11 @@
 """Codex Provider 구현"""
 
 import asyncio
+import os
+import re
 import shlex
+import tempfile
+from pathlib import Path
 
 from loguru import logger
 
@@ -53,13 +57,27 @@ class CodexProvider(BaseProvider):
         # 메시지를 프롬프트로 변환
         prompt = self._format_messages(messages)
 
+        # 임시 파일 경로 생성
+        temp_dir = Path(tempfile.gettempdir())
+        output_file = temp_dir / f"codex_output_{os.getpid()}_{asyncio.get_event_loop().time()}.md"
+        output_file_str = str(output_file)
+
+        # 프롬프트에 파일 저장 요청 추가
+        enhanced_prompt = f"{prompt}\n\n결과를 '{output_file_str}' 파일에 저장해줘."
+
         # Codex 명령어 구성
-        # codex exec - 형식으로 실행 (stdin에서 프롬프트 읽기)
-        command_parts = [self.command, "exec", "-"]
-        # 프롬프트를 안전하게 전달하기 위해 stdin 사용
+        # codex exec - --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox
+        command_parts = [
+            self.command,
+            "exec",
+            "-",
+            "--skip-git-repo-check",
+            "--dangerously-bypass-approvals-and-sandbox",
+        ]
         command = " ".join(command_parts)
 
         logger.info(f"Codex 명령어 실행: {command}")
+        logger.debug(f"출력 파일 경로: {output_file_str}")
 
         try:
             # subprocess 실행
@@ -72,7 +90,7 @@ class CodexProvider(BaseProvider):
 
             # 프롬프트를 stdin으로 전송하고 결과 대기
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(input=prompt.encode("utf-8")),
+                process.communicate(input=enhanced_prompt.encode("utf-8")),
                 timeout=self.timeout,
             )
 
@@ -86,8 +104,44 @@ class CodexProvider(BaseProvider):
                 logger.error(error_msg)
                 raise RuntimeError(error_msg)
 
-            # 응답 생성
-            content = stdout_text.strip()
+            # 파일이 생성되었는지 확인하고 읽기
+            content = ""
+            if output_file.exists():
+                logger.info(f"출력 파일 발견: {output_file_str}")
+                try:
+                    content = await asyncio.to_thread(output_file.read_text, encoding="utf-8")
+                    logger.info(f"파일에서 내용 읽기 완료: {len(content)}자")
+                    # 파일 삭제 (정리)
+                    try:
+                        output_file.unlink()
+                        logger.debug(f"임시 파일 삭제: {output_file_str}")
+                    except Exception as e:
+                        logger.warning(f"임시 파일 삭제 실패: {e}")
+                except Exception as e:
+                    logger.warning(f"파일 읽기 실패: {e}, stdout 사용")
+                    content = stdout_text.strip()
+            else:
+                # 파일이 없으면 stdout에서 파일 경로 추출 시도
+                logger.info("출력 파일이 없습니다. stdout에서 파일 경로 추출 시도")
+                file_paths = self._extract_file_paths(stdout_text)
+                if file_paths:
+                    # 첫 번째 파일 경로 시도
+                    for file_path in file_paths:
+                        path = Path(file_path)
+                        if path.exists():
+                            logger.info(f"추출된 파일 경로에서 읽기: {file_path}")
+                            try:
+                                content = await asyncio.to_thread(path.read_text, encoding="utf-8")
+                                logger.info(f"파일에서 내용 읽기 완료: {len(content)}자")
+                                break
+                            except Exception as e:
+                                logger.warning(f"파일 읽기 실패 ({file_path}): {e}")
+                                continue
+
+                # 파일을 찾지 못한 경우 stdout 사용
+                if not content:
+                    logger.info("파일을 찾지 못했습니다. stdout 사용")
+                    content = stdout_text.strip()
 
             # 토큰 사용량 추정
             prompt_tokens = self._estimate_tokens(prompt)
@@ -116,3 +170,35 @@ class CodexProvider(BaseProvider):
         except Exception as e:
             logger.exception(f"Codex 실행 중 오류: {e}")
             raise
+
+    def _extract_file_paths(self, text: str) -> list[str]:
+        """텍스트에서 파일 경로를 추출합니다.
+
+        Args:
+            text: 파일 경로를 추출할 텍스트
+
+        Returns:
+            추출된 파일 경로 리스트
+        """
+        # 일반적인 파일 경로 패턴 (Windows 및 Unix 경로)
+        # 지원 파일 확장자
+        ext_pattern = r"(?:md|txt|json|py|js|ts|html|css|yaml|yml)"
+        patterns = [
+            # 따옴표로 감싸진 파일 경로
+            rf'["\']([^"\']+\.{ext_pattern})["\']',
+            # Windows 절대 경로
+            rf"([A-Za-z]:[\\/][^\s\n]+\.{ext_pattern})",
+            # Unix 절대 경로
+            rf"(/[^\s\n]+\.{ext_pattern})",
+            # 상대 경로
+            rf"([^\s\n]+\.{ext_pattern})",
+        ]
+
+        file_paths: list[str] = []
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            file_paths.extend(matches)
+
+        # 중복 제거 및 정리
+        unique_paths = list(dict.fromkeys(file_paths))
+        return unique_paths
