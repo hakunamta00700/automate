@@ -12,7 +12,7 @@ from typing import Any
 
 import requests
 
-BASE_URL = "http://127.0.0.1:8001"
+BASE_URL = "http://127.0.0.1:8001"  # 기본값, main()에서 업데이트 가능
 TIMEOUT = 60
 PROD_API_KEY = "609eb993-0894-4cdd-b2f3-a70e34fa63ff"
 
@@ -429,6 +429,8 @@ def test_codex_error_handling(use_prod_key: bool = False) -> bool:
 
 def main() -> None:
     """메인 테스트 함수"""
+    global BASE_URL
+    
     # 명령줄 인자 파싱
     parser = argparse.ArgumentParser(description="Custom API Codex Provider 체크 스크립트")
     parser.add_argument(
@@ -436,8 +438,16 @@ def main() -> None:
         action="store_true",
         help="프로덕션 API 키를 사용하여 테스트합니다",
     )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="http://127.0.0.1:8001",
+        help="테스트할 서버 호스트 주소 (기본값: http://127.0.0.1:8001)",
+    )
     args = parser.parse_args()
     
+    # BASE_URL 업데이트
+    BASE_URL = args.host
     use_prod_key = args.prod
     
     print("\n" + "=" * 60)

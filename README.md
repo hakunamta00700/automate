@@ -205,6 +205,7 @@ OpenAI API 스타일의 인터페이스로 로컬 AI 도구들(Codex, OpenCode, 
 - `POST /v1/cursor/completions`: Cursor CLI 전용
 - `GET /v1/models`: 사용 가능한 모델 목록
 - `GET /health`: 헬스 체크
+- `GET/POST/PUT/DELETE/PATCH /v1/func/*`: 동적 등록되는 커스텀 기능 엔드포인트
 
 ## Custom API 사용 가이드
 
@@ -258,6 +259,28 @@ python try_check_custom_api_codex.py
 #### 기타 엔드포인트
 - **GET** `/v1/models`: 사용 가능한 모델 목록 조회
 - **GET** `/health`: 서버 헬스 체크
+
+#### 동적 엔드포인트 (`/v1/func/*`)
+`/v1/func/`로 시작하는 엔드포인트는 `custom_api/func/` 폴더 하위의 모듈에서 자동으로 등록됩니다.
+
+**동작 방식:**
+- `custom_api/func/` 폴더의 각 `.py` 파일이 하나의 엔드포인트로 등록됩니다
+- 파일명이 엔드포인트 경로가 됩니다 (예: `upload_markdown.py` → `/v1/func/upload_markdown`)
+- 각 모듈에서 HTTP 메서드별 함수를 정의하면 해당 메서드로 라우트가 자동 등록됩니다
+
+**지원하는 HTTP 메서드 함수:**
+- `get_method(request, *args, **kwargs)`: GET 메서드 핸들러
+- `post_method(request, *args, **kwargs)`: POST 메서드 핸들러
+- `put_method(request, *args, **kwargs)`: PUT 메서드 핸들러
+- `delete_method(request, *args, **kwargs)`: DELETE 메서드 핸들러
+- `patch_method(request, *args, **kwargs)`: PATCH 메서드 핸들러
+
+**예시:**
+- `custom_api/func/upload_markdown.py` 파일에 `get_method`와 `post_method` 함수가 있으면:
+  - `GET /v1/func/upload_markdown` 엔드포인트 자동 등록
+  - `POST /v1/func/upload_markdown` 엔드포인트 자동 등록
+
+자세한 사용법은 아래 "동적 엔드포인트 등록" 섹션을 참고하세요.
 
 ### 요청/응답 형식
 

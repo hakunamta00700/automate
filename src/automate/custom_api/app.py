@@ -1,7 +1,10 @@
 """Custom API FastAPI 애플리케이션"""
 
+import importlib
+import inspect
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Security
 from fastapi.responses import StreamingResponse
@@ -159,6 +162,80 @@ def create_auth_dependency(require_auth: bool):
     return verify_api_key
 
 
+def register_func_routes(app: FastAPI, auth_dependency: Callable) -> None:
+    """func 폴더의 모듈들을 동적으로 로드하여 라우트 등록
+
+    Args:
+        app: FastAPI 애플리케이션 인스턴스
+        auth_dependency: 인증 의존성 함수
+    """
+    # func 폴더 경로 찾기
+    current_file = Path(__file__)
+    func_dir = current_file.parent / "func"
+
+    if not func_dir.exists():
+        logger.debug(f"func 폴더가 없습니다: {func_dir}")
+        return
+
+    # HTTP 메서드 매핑
+    method_map = {
+        "get_method": "GET",
+        "post_method": "POST",
+        "put_method": "PUT",
+        "delete_method": "DELETE",
+        "patch_method": "PATCH",
+    }
+
+    registered_count = 0
+
+    # func 폴더의 모든 .py 파일 찾기
+    for py_file in func_dir.glob("*.py"):
+        if py_file.name == "__init__.py":
+            continue
+
+        module_name = py_file.stem
+        module_path = f"automate.custom_api.func.{module_name}"
+
+        try:
+            # 모듈 동적 로드
+            module = importlib.import_module(module_path)
+
+            # 각 HTTP 메서드 함수 찾기 및 등록
+            for func_name, http_method in method_map.items():
+                if hasattr(module, func_name):
+                    handler_func = getattr(module, func_name)
+                    # 함수인지 확인
+                    if inspect.isfunction(handler_func) or inspect.iscoroutinefunction(
+                        handler_func
+                    ):
+                        # 라우트 경로 생성
+                        route_path = f"/v1/func/{module_name}"
+
+                        # 라우트 등록
+                        app.add_api_route(
+                            route_path,
+                            handler_func,
+                            methods=[http_method],
+                            dependencies=[Depends(auth_dependency)] if auth_dependency else [],
+                        )
+
+                        logger.info(
+                            f"동적 라우트 등록: {http_method} {route_path} -> "
+                            f"{module_path}.{func_name}"
+                        )
+                        registered_count += 1
+
+        except ImportError as e:
+            logger.warning(f"모듈 로드 실패: {module_path} - {e}")
+        except Exception as e:
+            logger.exception(f"라우트 등록 중 오류 발생: {module_path} - {e}")
+
+    if registered_count > 0:
+        logger.info(f"총 {registered_count}개의 동적 라우트가 등록되었습니다.")
+    else:
+        logger.debug("등록된 동적 라우트가 없습니다.")
+
+
 def create_app(default_provider: str = "codex", require_auth: bool = False) -> FastAPI:
     """Custom API FastAPI 애플리케이션 생성
 
@@ -182,6 +259,9 @@ def create_app(default_provider: str = "codex", require_auth: bool = False) -> F
     auth_dependency = create_auth_dependency(require_auth)
 
     logger.info("FastAPI 애플리케이션 생성 완료")
+
+    # 동적 func 라우트 등록
+    register_func_routes(app, auth_dependency)
 
     # 사용 가능한 모델 목록
     AVAILABLE_MODELS = [
