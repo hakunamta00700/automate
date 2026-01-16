@@ -34,26 +34,30 @@ def create_provider(provider_type: str | None = None) -> BaseProvider:
 
     # Provider 타입 결정 (설정 또는 인자)
     if provider_type is None:
-        # 환경 변수에서 Provider 타입 가져오기 (기본값: codex)
-        provider_type = getattr(settings, "AI_PROVIDER", "codex")
+        # .env 파일에서 AI_PROVIDER를 가져오고, 없으면 기본값 "codex" 사용
+        provider_type = settings.AI_PROVIDER or "codex"
+        logger.debug(f".env에서 AI_PROVIDER 읽음: {provider_type}")
 
     provider_type = provider_type.lower()
 
-    logger.info(f"AI Provider 생성: {provider_type}")
-
     # Provider 타입에 따라 인스턴스 생성
     if provider_type == "openai":
-        return OpenAIProvider()
+        provider = OpenAIProvider()
     elif provider_type == "codex":
-        return CodexProvider()
+        provider = CodexProvider()
     elif provider_type == "opencode":
-        return OpenCodeProvider()
+        provider = OpenCodeProvider()
     elif provider_type == "gemini":
-        return GeminiProvider()
+        provider = GeminiProvider()
     elif provider_type == "cursor":
-        return CursorProvider()
+        provider = CursorProvider()
     else:
         raise ValueError(
             f"지원하지 않는 Provider 타입: {provider_type}. "
             f"지원 타입: openai, codex, opencode, gemini, cursor"
         )
+    
+    provider_name = type(provider).__name__
+    logger.info(f"AI Provider 생성 완료 - Type: {provider_type}, Provider: {provider_name}, Model: {provider.model_name}")
+    
+    return provider

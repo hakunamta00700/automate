@@ -1,7 +1,6 @@
 """Airtable 저장소"""
 
 import asyncio
-from typing import Dict
 
 from pyairtable import Api
 
@@ -9,7 +8,7 @@ from ...core.config import get_settings
 from .client import get_base_from_aritable, get_table_from_base
 
 
-async def save_to_airtable(video_id: str, record: Dict) -> None:
+async def save_to_airtable(video_id: str, record: dict) -> None:
     """요약된 내용을 Airtable에 저장합니다."""
     settings = get_settings()
 

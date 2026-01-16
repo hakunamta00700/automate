@@ -2,7 +2,6 @@
 
 import asyncio
 from dataclasses import asdict, dataclass
-from typing import Dict, List
 
 from loguru import logger
 
@@ -21,7 +20,7 @@ class Youtube:
     url: str
     title: str
     thumbnail_url: str
-    thumbnail: List[Dict]
+    thumbnail: list[dict]
     transcript: str
     summary: str
 

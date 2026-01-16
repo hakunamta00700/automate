@@ -1,7 +1,7 @@
 """OpenAI API 스타일의 요청/응답 모델"""
 
 from datetime import datetime
-from typing import List, Literal, Optional
+from typing import Literal, Optional
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -18,7 +18,7 @@ class ChatCompletionRequest(BaseModel):
     """Chat Completion 요청 모델"""
 
     model: str = Field(..., description="사용할 모델 이름")
-    messages: List[ChatMessage] = Field(..., description="메시지 배열")
+    messages: list[ChatMessage] = Field(..., description="메시지 배열")
     temperature: Optional[float] = Field(
         default=1.0, ge=0.0, le=2.0, description="샘플링 온도"
     )
@@ -63,7 +63,7 @@ class ChatCompletionResponse(BaseModel):
         description="생성 시간 (Unix timestamp)",
     )
     model: str = Field(..., description="사용된 모델 이름")
-    choices: List[ChatCompletionChoice] = Field(..., description="응답 선택지")
+    choices: list[ChatCompletionChoice] = Field(..., description="응답 선택지")
     usage: Optional[Usage] = Field(default=None, description="토큰 사용량")
 
 
@@ -83,4 +83,4 @@ class ModelsListResponse(BaseModel):
     """모델 목록 응답 모델"""
 
     object: Literal["list"] = "list"
-    data: List[ModelInfo] = Field(..., description="모델 목록")
+    data: list[ModelInfo] = Field(..., description="모델 목록")

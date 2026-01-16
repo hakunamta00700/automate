@@ -1,7 +1,5 @@
 """OpenAI Provider 구현"""
 
-from typing import List
-
 from loguru import logger
 from openai import AsyncOpenAI
 
@@ -41,7 +39,7 @@ class OpenAIProvider(BaseProvider):
 
     async def chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -57,6 +55,9 @@ class OpenAIProvider(BaseProvider):
         Returns:
             ChatCompletionResponse
         """
+        provider_name = type(self).__name__
+        logger.info(f"OpenAIProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}")
+        
         try:
             # ChatMessage를 OpenAI 형식으로 변환
             openai_messages = [

@@ -1,13 +1,12 @@
 """YouTube 메타데이터 추출"""
 
 import asyncio
-from typing import Dict
 
 import requests
 from bs4 import BeautifulSoup
 
 
-async def get_youtube_metadata(video_id: str) -> Dict:
+async def get_youtube_metadata(video_id: str) -> dict:
     """YouTube 비디오의 메타데이터를 가져옵니다."""
     url = f"https://www.youtube.com/watch?v={video_id}"
     response = await asyncio.to_thread(requests.get, url)

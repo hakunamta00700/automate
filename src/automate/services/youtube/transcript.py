@@ -1,14 +1,12 @@
 """YouTube 대본 추출"""
 
-from typing import Dict, List
-
 from youtube_transcript_api import YouTubeTranscriptApi
 
 from ...utils.async_utils import to_async
 
 
 @to_async
-def get_transcript(video_id: str, language: str = "ko") -> List[Dict]:
+def get_transcript(video_id: str, language: str = "ko") -> list[dict]:
     """YouTube 비디오의 대본을 가져옵니다.
 
     Args:

@@ -1,9 +1,6 @@
 """대본 포맷팅 유틸리티"""
 
-from typing import Dict, List
-
-
-def format_transcript_with_timestamps(transcript: List[Dict]) -> List[str]:
+def format_transcript_with_timestamps(transcript: list[dict]) -> list[str]:
     """대본을 시간 포맷을 포함한 문자열 리스트로 변환합니다."""
 
     def seconds_to_hms(seconds: float) -> str:

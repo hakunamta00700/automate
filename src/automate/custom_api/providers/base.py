@@ -1,7 +1,7 @@
 """AI Provider 추상 베이스 클래스"""
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List
+from typing import AsyncIterator
 
 from ..models import ChatCompletionResponse, ChatMessage
 
@@ -20,7 +20,7 @@ class BaseProvider(ABC):
     @abstractmethod
     async def chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -40,7 +40,7 @@ class BaseProvider(ABC):
 
     async def stream_chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -62,7 +62,7 @@ class BaseProvider(ABC):
         )
         yield response
 
-    def _format_messages(self, messages: List[ChatMessage]) -> str:
+    def _format_messages(self, messages: list[ChatMessage]) -> str:
         """메시지 배열을 프롬프트 문자열로 변환
 
         Args:

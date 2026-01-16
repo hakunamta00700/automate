@@ -2,7 +2,6 @@
 
 import asyncio
 import shlex
-from typing import List
 
 from loguru import logger
 
@@ -27,10 +26,9 @@ class CodexProvider(BaseProvider):
         self.command = settings.CODEX_COMMAND
         self.timeout = settings.COMMAND_TIMEOUT
 
-
     async def chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -46,6 +44,12 @@ class CodexProvider(BaseProvider):
         Returns:
             ChatCompletionResponse
         """
+        provider_name = type(self).__name__
+        logger.info(
+            f"CodexProvider.chat_completion() 호출됨 - "
+            f"Provider: {provider_name}, Model: {self.model_name}"
+        )
+
         # 메시지를 프롬프트로 변환
         prompt = self._format_messages(messages)
 
@@ -95,9 +99,7 @@ class CodexProvider(BaseProvider):
                 choices=[
                     ChatCompletionChoice(
                         index=0,
-                        message=ChatCompletionMessage(
-                            role="assistant", content=content
-                        ),
+                        message=ChatCompletionMessage(role="assistant", content=content),
                         finish_reason="stop" if content else "error",
                     )
                 ],
@@ -108,9 +110,9 @@ class CodexProvider(BaseProvider):
                 ),
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError as err:
             logger.error(f"Codex 실행 타임아웃 ({self.timeout}초)")
-            raise RuntimeError(f"Codex 실행 타임아웃 ({self.timeout}초)")
+            raise RuntimeError(f"Codex 실행 타임아웃 ({self.timeout}초)") from err
         except Exception as e:
             logger.exception(f"Codex 실행 중 오류: {e}")
             raise

@@ -1,7 +1,5 @@
 """AI 요약 생성"""
 
-from typing import Dict, List
-
 from loguru import logger
 
 from ...core.config import get_settings
@@ -27,7 +25,7 @@ def estimate_tokens(text: str) -> int:
     return len(text) // 3
 
 
-def split_transcript(transcript: List[Dict], max_tokens: int) -> List[List[Dict]]:
+def split_transcript(transcript: list[dict], max_tokens: int) -> list[list[dict]]:
     """대본을 토큰 제한에 맞춰 여러 청크로 분할합니다.
 
     Args:
@@ -40,8 +38,8 @@ def split_transcript(transcript: List[Dict], max_tokens: int) -> List[List[Dict]
     if not transcript:
         return []
 
-    chunks: List[List[Dict]] = []
-    current_chunk: List[Dict] = []
+    chunks: list[list[dict]] = []
+    current_chunk: list[dict] = []
     current_tokens = 0
 
     for entry in transcript:
@@ -67,7 +65,7 @@ def split_transcript(transcript: List[Dict], max_tokens: int) -> List[List[Dict]
 
 
 async def _summarize_chunk(
-    chunk_transcript: List[Dict],
+    chunk_transcript: list[dict],
     system_prompt: str,
     chunk_index: int,
     total_chunks: int,
@@ -88,12 +86,13 @@ async def _summarize_chunk(
     formatted_text = format_transcript(chunk_transcript)
 
     # 청크 정보를 포함한 프롬프트 생성
-    chunk_info = (
-        f"\n\n[참고: 이것은 전체 대본의 {chunk_index + 1}/{total_chunks} 부분입니다.]"
-    )
+    chunk_info = f"\n\n[참고: 이것은 전체 대본의 {chunk_index + 1}/{total_chunks} 부분입니다.]"
     user_prompt = chunk_info + "\n\n---\n\n대본:\n" + formatted_text
 
     # Provider를 사용하여 요약 생성
+    provider_name = type(provider).__name__
+    logger.debug(f"청크 {chunk_index + 1}/{total_chunks} 요약 처리 중 - Provider: {provider_name}")
+
     messages = [
         ChatMessage(role="system", content=system_prompt),
         ChatMessage(role="user", content=user_prompt),
@@ -104,7 +103,7 @@ async def _summarize_chunk(
 
 
 async def summarize(
-    transcript: List[Dict],
+    transcript: list[dict],
     model_name: str | None = None,
     provider_type: str | None = None,
 ) -> str:
@@ -125,8 +124,9 @@ async def summarize(
 
     # Provider 생성
     provider = create_provider(provider_type=provider_type)
+    provider_name = type(provider).__name__
 
-    logger.info(f"대본 요약 시작 (Provider: {provider.model_name})")
+    logger.info(f"대본 요약 시작 - Provider: {provider_name} (model: {provider.model_name})")
     system_prompt_text = load_prompt()
     formatted_text = format_transcript(transcript)
 
@@ -141,19 +141,18 @@ async def summarize(
     # 시스템 프롬프트를 제외한 대본만의 최대 토큰 수
     max_transcript_tokens = safe_token_limit - system_prompt_tokens
 
-    logger.info(
-        f"전체 토큰 수: {total_tokens}, 시스템 프롬프트 토큰: {system_prompt_tokens}"
-    )
+    logger.info(f"전체 토큰 수: {total_tokens}, 시스템 프롬프트 토큰: {system_prompt_tokens}")
 
     # 토큰 제한을 초과하지 않으면 일반 요약
     if total_tokens <= safe_token_limit:
-        logger.info("토큰 제한 내 - 단일 요약 실행")
+        logger.info(f"토큰 제한 내 - 단일 요약 실행 - Provider: {provider_name}")
         messages = [
             ChatMessage(role="system", content=system_prompt_text),
             ChatMessage(role="user", content=full_user_prompt),
         ]
 
         response = await provider.chat_completion(messages=messages)
+        logger.info(f"단일 요약 완료 - Provider: {provider_name}")
         return response.choices[0].message.content or ""
 
     # 토큰 제한 초과 - 분할 요약
@@ -166,21 +165,16 @@ async def summarize(
     logger.info(f"대본을 {len(chunks)}개 청크로 분할했습니다.")
 
     # 각 청크를 요약
-    chunk_summaries: List[str] = []
+    chunk_summaries: list[str] = []
     for i, chunk in enumerate(chunks):
-        logger.info(f"청크 {i + 1}/{len(chunks)} 요약 중...")
-        chunk_summary = await _summarize_chunk(
-            chunk, system_prompt_text, i, len(chunks), provider
-        )
+        logger.info(f"청크 {i + 1}/{len(chunks)} 요약 중... - Provider: {provider_name}")
+        chunk_summary = await _summarize_chunk(chunk, system_prompt_text, i, len(chunks), provider)
         chunk_summaries.append(chunk_summary)
 
     # 모든 청크 요약을 합쳐서 최종 요약 생성
-    logger.info("청크 요약들을 종합하여 최종 요약 생성 중...")
+    logger.info(f"청크 요약들을 종합하여 최종 요약 생성 중... - Provider: {provider_name}")
     combined_summaries = "\n\n---\n\n".join(
-        [
-            f"[{i + 1}번째 부분 요약]\n{summary}"
-            for i, summary in enumerate(chunk_summaries)
-        ]
+        [f"[{i + 1}번째 부분 요약]\n{summary}" for i, summary in enumerate(chunk_summaries)]
     )
 
     # 최종 요약 프롬프트
@@ -199,5 +193,5 @@ async def summarize(
 
     final_response = await provider.chat_completion(messages=final_messages)
 
-    logger.info("최종 요약 완료")
+    logger.info(f"최종 요약 완료 - Provider: {provider_name}")
     return final_response.choices[0].message.content or ""

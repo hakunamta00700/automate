@@ -4,7 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from loguru import logger
 
@@ -74,7 +74,7 @@ class FileCache:
         except Exception as e:
             logger.warning(f"캐시 저장 실패 ({key}): {e}")
 
-    def _hash_transcript(self, transcript: List[Dict]) -> str:
+    def _hash_transcript(self, transcript: list[dict]) -> str:
         """대본 리스트의 해시값 생성
 
         Args:
@@ -110,7 +110,7 @@ class FileCache:
         """
         return f"metadata_{video_id}"
 
-    def get_summary_key(self, transcript: List[Dict]) -> str:
+    def get_summary_key(self, transcript: list[dict]) -> str:
         """요약 캐시 키 생성
 
         Args:

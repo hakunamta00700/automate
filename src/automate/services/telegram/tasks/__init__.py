@@ -7,14 +7,14 @@ Task 클래스는 BaseTask를 상속받고 TASK_NAME과 COMMAND_PREFIX를 정의
 import importlib
 import inspect
 from pathlib import Path
-from typing import Dict, Type
+from typing import Type
 
 from loguru import logger
 
 from .base import BaseTask
 
 # Task 레지스트리
-_task_registry: Dict[str, Type[BaseTask]] = {}
+_task_registry: dict[str, Type[BaseTask]] = {}
 
 
 def _load_tasks() -> None:
@@ -68,7 +68,7 @@ def get_task_by_name(task_name: str) -> Type[BaseTask] | None:
     return _task_registry.get(task_name)
 
 
-def get_all_tasks() -> Dict[str, Type[BaseTask]]:
+def get_all_tasks() -> dict[str, Type[BaseTask]]:
     """등록된 모든 Task를 반환합니다."""
     return _task_registry.copy()
 

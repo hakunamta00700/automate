@@ -1,6 +1,5 @@
 """Custom API FastAPI 애플리케이션"""
 
-from typing import Dict
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -32,7 +31,7 @@ def get_provider(model: str) -> BaseProvider:
     Raises:
         HTTPException: 지원하지 않는 모델인 경우
     """
-    providers: Dict[str, BaseProvider] = {
+    providers: dict[str, BaseProvider] = {
         "codex": CodexProvider(),
         "opencode": OpenCodeProvider(),
         "gemini": GeminiProvider(),
@@ -45,7 +44,10 @@ def get_provider(model: str) -> BaseProvider:
             detail=f"지원하지 않는 모델: {model}. 지원 모델: {', '.join(providers.keys())}",
         )
 
-    return providers[model]
+    provider = providers[model]
+    provider_name = type(provider).__name__
+    logger.info(f"Provider 선택됨: {provider_name} (model: {model})")
+    return provider
 
 
 def create_app() -> FastAPI:
@@ -86,11 +88,14 @@ def create_app() -> FastAPI:
         """
         try:
             provider = get_provider(request.model)
+            provider_name = type(provider).__name__
+            logger.info(f"Chat completion 처리 시작 - Provider: {provider_name}, Model: {request.model}")
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
+            logger.info(f"Chat completion 처리 완료 - Provider: {provider_name}")
             return response
         except RuntimeError as e:
             logger.error(f"Chat completion 오류: {e}")
@@ -104,6 +109,8 @@ def create_app() -> FastAPI:
         """스트리밍 Chat Completions 엔드포인트"""
         try:
             provider = get_provider(request.model)
+            provider_name = type(provider).__name__
+            logger.info(f"Streaming chat completion 처리 시작 - Provider: {provider_name}, Model: {request.model}")
 
             async def generate():
                 async for chunk in provider.stream_chat_completion(
@@ -114,6 +121,7 @@ def create_app() -> FastAPI:
                     # SSE 형식으로 전송
                     yield f"data: {chunk.model_dump_json()}\n\n"
                 yield "data: [DONE]\n\n"
+                logger.info(f"Streaming chat completion 처리 완료 - Provider: {provider_name}")
 
             return StreamingResponse(generate(), media_type="text/event-stream")
         except RuntimeError as e:
@@ -128,11 +136,13 @@ def create_app() -> FastAPI:
         """Codex 전용 Chat Completions 엔드포인트"""
         try:
             provider = CodexProvider()
+            logger.info(f"Codex completion 처리 시작 - Provider: {type(provider).__name__}")
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
+            logger.info(f"Codex completion 처리 완료 - Provider: {type(provider).__name__}")
             return response
         except RuntimeError as e:
             logger.error(f"Codex completion 오류: {e}")
@@ -146,11 +156,13 @@ def create_app() -> FastAPI:
         """OpenCode 전용 Chat Completions 엔드포인트"""
         try:
             provider = OpenCodeProvider()
+            logger.info(f"OpenCode completion 처리 시작 - Provider: {type(provider).__name__}")
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
+            logger.info(f"OpenCode completion 처리 완료 - Provider: {type(provider).__name__}")
             return response
         except RuntimeError as e:
             logger.error(f"OpenCode completion 오류: {e}")
@@ -164,11 +176,13 @@ def create_app() -> FastAPI:
         """Gemini 전용 Chat Completions 엔드포인트"""
         try:
             provider = GeminiProvider()
+            logger.info(f"Gemini completion 처리 시작 - Provider: {type(provider).__name__}")
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
+            logger.info(f"Gemini completion 처리 완료 - Provider: {type(provider).__name__}")
             return response
         except RuntimeError as e:
             logger.error(f"Gemini completion 오류: {e}")
@@ -182,11 +196,13 @@ def create_app() -> FastAPI:
         """Cursor 전용 Chat Completions 엔드포인트"""
         try:
             provider = CursorProvider()
+            logger.info(f"Cursor completion 처리 시작 - Provider: {type(provider).__name__}")
             response = await provider.chat_completion(
                 messages=request.messages,
                 temperature=request.temperature,
                 max_tokens=request.max_tokens,
             )
+            logger.info(f"Cursor completion 처리 완료 - Provider: {type(provider).__name__}")
             return response
         except RuntimeError as e:
             logger.error(f"Cursor completion 오류: {e}")

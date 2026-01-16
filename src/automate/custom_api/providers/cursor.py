@@ -28,7 +28,7 @@ class CursorProvider(BaseProvider):
 
     async def chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -44,6 +44,9 @@ class CursorProvider(BaseProvider):
         Returns:
             ChatCompletionResponse
         """
+        provider_name = type(self).__name__
+        logger.info(f"CursorProvider.chat_completion() 호출됨 - Provider: {provider_name}, Model: {self.model_name}")
+        
         # 메시지를 프롬프트로 변환
         prompt = self._format_messages(messages)
 

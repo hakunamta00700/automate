@@ -1,7 +1,6 @@
 """Gemini Provider 구현"""
 
 import asyncio
-import json
 import shlex
 
 from loguru import logger
@@ -29,7 +28,7 @@ class GeminiProvider(BaseProvider):
 
     async def chat_completion(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float = 1.0,
         max_tokens: int | None = None,
         **kwargs,
@@ -45,24 +44,27 @@ class GeminiProvider(BaseProvider):
         Returns:
             ChatCompletionResponse
         """
+        provider_name = type(self).__name__
+        logger.info(
+            f"GeminiProvider.chat_completion() 호출됨 - "
+            f"Provider: {provider_name}, Model: {self.model_name}"
+        )
+
         # API 키가 있으면 API 사용, 없으면 CLI 사용
         if self.api_key:
-            return await self._chat_completion_api(
-                messages, temperature, max_tokens, **kwargs
-            )
+            return await self._chat_completion_api(messages, temperature, max_tokens, **kwargs)
         else:
-            return await self._chat_completion_cli(
-                messages, temperature, max_tokens, **kwargs
-            )
+            return await self._chat_completion_cli(messages, temperature, max_tokens, **kwargs)
 
     async def _chat_completion_api(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float,
         max_tokens: int | None,
         **kwargs,
     ) -> ChatCompletionResponse:
         """Gemini API를 사용하여 Chat completion 생성"""
+        logger.info("GeminiProvider: API 모드 사용")
         try:
             import google.generativeai as genai
 
@@ -96,9 +98,7 @@ class GeminiProvider(BaseProvider):
                 choices=[
                     ChatCompletionChoice(
                         index=0,
-                        message=ChatCompletionMessage(
-                            role="assistant", content=content
-                        ),
+                        message=ChatCompletionMessage(role="assistant", content=content),
                         finish_reason="stop" if content else "error",
                     )
                 ],
@@ -113,27 +113,26 @@ class GeminiProvider(BaseProvider):
             logger.warning(
                 "google-generativeai 패키지가 설치되지 않았습니다. CLI 모드로 전환합니다."
             )
-            return await self._chat_completion_cli(
-                messages, temperature, max_tokens, **kwargs
-            )
+            return await self._chat_completion_cli(messages, temperature, max_tokens, **kwargs)
         except Exception as e:
             logger.exception(f"Gemini API 호출 중 오류: {e}")
-            raise RuntimeError(f"Gemini API 호출 실패: {e}")
+            raise RuntimeError(f"Gemini API 호출 실패: {e}") from e
 
     async def _chat_completion_cli(
         self,
-        messages: List[ChatMessage],
+        messages: list[ChatMessage],
         temperature: float,
         max_tokens: int | None,
         **kwargs,
     ) -> ChatCompletionResponse:
         """Gemini CLI를 사용하여 Chat completion 생성
-        
+
         주의: Gemini CLI 사용법은 공식 문서에서 명확하지 않습니다.
         이 메서드는 API 키가 없을 때 fallback으로 사용됩니다.
         실제 환경에 맞는 CLI 명령어가 있다면 설정에서 커스터마이징하거나
         이 메서드를 수정해야 할 수 있습니다.
         """
+        logger.info("GeminiProvider: CLI 모드 사용")
         # 메시지를 프롬프트로 변환
         prompt = self._format_messages(messages)
 
@@ -184,9 +183,7 @@ class GeminiProvider(BaseProvider):
                 choices=[
                     ChatCompletionChoice(
                         index=0,
-                        message=ChatCompletionMessage(
-                            role="assistant", content=content
-                        ),
+                        message=ChatCompletionMessage(role="assistant", content=content),
                         finish_reason="stop" if content else "error",
                     )
                 ],
@@ -197,9 +194,9 @@ class GeminiProvider(BaseProvider):
                 ),
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError as err:
             logger.error(f"Gemini CLI 실행 타임아웃 ({self.timeout}초)")
-            raise RuntimeError(f"Gemini CLI 실행 타임아웃 ({self.timeout}초)")
+            raise RuntimeError(f"Gemini CLI 실행 타임아웃 ({self.timeout}초)") from err
         except Exception as e:
             logger.exception(f"Gemini CLI 실행 중 오류: {e}")
             raise
