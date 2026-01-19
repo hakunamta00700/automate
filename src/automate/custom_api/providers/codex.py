@@ -71,6 +71,7 @@ class CodexProvider(BaseProvider):
             self.command,
             "exec",
             "-",
+            "--model gpt-5.2",
             "--skip-git-repo-check",
             "--dangerously-bypass-approvals-and-sandbox",
         ]
