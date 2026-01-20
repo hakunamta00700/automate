@@ -66,32 +66,31 @@ class CodexProvider(BaseProvider):
         enhanced_prompt = f"{prompt}\n\n결과를 '{output_file_str}' 파일에 저장해줘."
 
         # Codex 명령어 구성
-        # codex exec - --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox
+        # codex exec --model gpt-5.2 --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox [PROMPT]
         command_parts = [
             self.command,
             "exec",
-            "-",
-            "--model gpt-5.2",
+            "--model", "gpt-5.2",
             "--skip-git-repo-check",
             "--dangerously-bypass-approvals-and-sandbox",
+            shlex.quote(enhanced_prompt),  # 프롬프트를 stdin 아니라 직접 인자에 전달
         ]
         command = " ".join(command_parts)
 
         logger.info(f"Codex 명령어 실행: {command}")
         logger.debug(f"출력 파일 경로: {output_file_str}")
-        logger.debug(f"프롬프트: {enhanced_prompt}")
+        logger.debug(f"프롬프트(인자): {enhanced_prompt}")
         try:
-            # subprocess 실행
+            # subprocess 실행 (더 이상 stdin 사용하지 않음)
             process = await asyncio.create_subprocess_exec(
                 *shlex.split(command),
-                stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
             )
 
-            # 프롬프트를 stdin으로 전송하고 결과 대기
+            # 결과 대기 (stdin 인풋 없음)
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(input=enhanced_prompt.encode("utf-8")),
+                process.communicate(),
                 timeout=self.timeout,
             )
 
