@@ -84,6 +84,10 @@ GEMINI_API_KEY=your_gemini_api_key
 CUSTOM_API_HOST=0.0.0.0
 CUSTOM_API_PORT=8001
 CUSTOM_API_TIMEOUT=300
+
+# Custom API background worker(Huey) 설정 (선택)
+# Custom API 프로세스와 `automate worker` 프로세스가 동일한 SQLite 파일을 공유해야 합니다.
+CUSTOM_API_HUEY_DB_PATH=.cache/huey/automate-huey.db
 ```
 
 ## 사용법
@@ -206,6 +210,23 @@ OpenAI API 스타일의 인터페이스로 로컬 AI 도구들(Codex, OpenCode, 
 - `GET /v1/models`: 사용 가능한 모델 목록
 - `GET /health`: 헬스 체크
 - `GET/POST/PUT/DELETE/PATCH /v1/func/*`: 동적 등록되는 커스텀 기능 엔드포인트
+  - `POST /v1/func/upload_markdown`: **비동기 enqueue** (즉시 `task_id` 반환, 202)
+  - `GET /v1/func/task_status?task_id=...`: task 결과/완료 여부 조회
+
+#### 9. Worker 실행 (Huey)
+
+`/v1/func/*` 중 일부 엔드포인트는 작업을 Huey 큐에 enqueue 한 뒤 `task_id`만 반환합니다.
+실제 작업 처리를 위해 별도 워커 프로세스를 실행하세요:
+
+```bash
+# 기본 실행 (thread worker 1개)
+automate worker
+
+# 동시 실행 워커 수 지정
+automate worker --workers 2
+```
+
+**주의:** Custom API 서버와 워커는 동일한 `CUSTOM_API_HUEY_DB_PATH`(SQLite 파일)를 공유해야 합니다.
 
 ## Custom API 사용 가이드
 
@@ -279,6 +300,9 @@ python try_check_custom_api_codex.py
 - `custom_api/func/upload_markdown.py` 파일에 `get_method`와 `post_method` 함수가 있으면:
   - `GET /v1/func/upload_markdown` 엔드포인트 자동 등록
   - `POST /v1/func/upload_markdown` 엔드포인트 자동 등록
+
+`upload_markdown`의 POST는 작업을 Huey 큐에 넣고 즉시 `task_id`를 반환합니다.
+완료 결과는 `task_status`로 폴링하여 확인할 수 있습니다.
 
 자세한 사용법은 아래 "동적 엔드포인트 등록" 섹션을 참고하세요.
 

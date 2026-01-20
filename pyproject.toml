@@ -33,6 +33,7 @@ dependencies = [
     "click>=8.1.8",
     "hypercorn>=0.17.3",
     "fastapi>=0.115.12",
+    "huey>=2.6.0",
     "python-dotenv>=1.1.0",
     "pyairtable>=3.1.1",
     "openai>=1.78.0",
@@ -45,6 +46,7 @@ dependencies = [
     "aiohttp>=3.9.3",
     "uv-easy>=0.2.5",
     "youtube-transcript-api==1.2.3",
+    "markdown-to-blog>=0.4.0",
 ]
 [[project.authors]]
 name = "David Cho"

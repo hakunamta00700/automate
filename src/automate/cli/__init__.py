@@ -11,6 +11,7 @@ from .commands.transcribe import (
     transcribe,
     transcribe_from_url,
 )
+from .commands.worker import worker
 
 
 @click.group()
@@ -28,6 +29,7 @@ cli.add_command(telegram_bot, name="telegram-bot")
 cli.add_command(dispatch)
 cli.add_command(send_telegram, name="send-telegram")
 cli.add_command(custom_api, name="custom-api")
+cli.add_command(worker)
 
 
 __all__ = ["cli"]
