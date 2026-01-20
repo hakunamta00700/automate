@@ -53,7 +53,7 @@ class CustomAPISettings:
     CUSTOM_API_KEY: str | None = os.getenv("CUSTOM_API_KEY")
 
     # 타임아웃 설정 (초)
-    COMMAND_TIMEOUT: int = int(os.getenv("CUSTOM_API_TIMEOUT", "300"))
+    COMMAND_TIMEOUT: int = int(os.getenv("CUSTOM_API_TIMEOUT", "540"))
 
 
 # 전역 설정 인스턴스

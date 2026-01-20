@@ -79,7 +79,7 @@ class CodexProvider(BaseProvider):
 
         logger.info(f"Codex 명령어 실행: {command}")
         logger.debug(f"출력 파일 경로: {output_file_str}")
-        logger.debug(f"프롬프트(인자): {enhanced_prompt}")
+        logger.debug(f"프롬프트(인자): {enhanced_prompt:200}")
         try:
             # subprocess 실행 (더 이상 stdin 사용하지 않음)
             process = await asyncio.create_subprocess_exec(
