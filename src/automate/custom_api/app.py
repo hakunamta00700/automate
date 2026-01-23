@@ -211,17 +211,24 @@ def register_func_routes(app: FastAPI, auth_dependency: Callable) -> None:
                         # 라우트 경로 생성
                         route_path = f"/v1/func/{module_name}"
 
+                        # GET 메서드는 인증 불필요, 나머지는 인증 적용
+                        # auth_dependency가 있고 GET이 아닐 때만 인증 의존성 추가
+                        dependencies = []
+                        if auth_dependency and http_method != "GET":
+                            dependencies = [Depends(auth_dependency)]
+
                         # 라우트 등록
                         app.add_api_route(
                             route_path,
                             handler_func,
                             methods=[http_method],
-                            dependencies=[Depends(auth_dependency)] if auth_dependency else [],
+                            dependencies=dependencies,
                         )
 
+                        auth_status = "인증 필요" if dependencies else "인증 불필요"
                         logger.info(
                             f"동적 라우트 등록: {http_method} {route_path} -> "
-                            f"{module_path}.{func_name}"
+                            f"{module_path}.{func_name} ({auth_status})"
                         )
                         registered_count += 1
 
