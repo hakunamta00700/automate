@@ -10,7 +10,11 @@ from ..tasks.upload_markdown import generate_post_from_airtable
 
 
 async def get_method(request: Request):
-    """GET 메서드 핸들러 예시
+    """GET /v1/func/upload_markdown
+
+    - 기본적으로 `from=airtable` 사용
+    - query parameter로 `row_id`를 받음
+    - `mdb generate_post_from_airtable --row_id <row_id>` 실행
 
     Args:
         request: FastAPI Request 객체
@@ -19,11 +23,28 @@ async def get_method(request: Request):
         응답 데이터
     """
     logger.info("GET /v1/func/upload_markdown 호출됨")
-    return {
-        "message": "Markdown 업로드 GET 엔드포인트",
-        "method": "GET",
-        "path": str(request.url.path),
-    }
+    source = "airtable"  # 기본값
+
+    # query parameter에서 row_id 추출
+    row_id = request.query_params.get("row_id")
+    if not row_id:
+        raise HTTPException(status_code=400, detail="query parameter에 row_id가 필요합니다.")
+    _validate_row_id(row_id)
+
+    # Huey 큐에 작업 enqueue (즉시 반환)
+    result_handle = generate_post_from_airtable(row_id=row_id, use_codex=True)
+    raw_task_id = getattr(result_handle, "id", None)
+    task_id = str(raw_task_id) if raw_task_id is not None else None
+
+    return JSONResponse(
+        status_code=202,
+        content={
+            "ok": True,
+            "from": source,
+            "row_id": row_id,
+            "task_id": task_id,
+        },
+    )
 
 
 def _get_content_type(request: Request) -> str:
